@@ -76,6 +76,8 @@ public struct Transaction: Codable, Sendable, Hashable, Identifiable {
     public var accountName: String
     public var bank: Bank
     public var title: String
+    /// The headline the user typed, or nil while `title` is one of the fallbacks.
+    public var userTitle: String?
     public var counterpartyName: String?
     public var counterpartyBank: String?
     public var counterpartyAccount: String?
@@ -90,7 +92,7 @@ public struct Transaction: Codable, Sendable, Hashable, Identifiable {
     public var unsureTransfer: Bool
     public var createdAt: String
 
-    public init(id: String, occurredAt: String, type: TransactionType, amountMinor: Int, currency: Currency, defaultMinor: Int?, defaultCurrency: Currency, usdMinor: Int?, fxPerUsd: Double?, accountId: String, accountName: String, bank: Bank, title: String, counterpartyName: String?, counterpartyBank: String?, counterpartyAccount: String?, bankDescription: String?, userDescription: String?, categoryId: String?, categoryName: String?, source: TransactionSource, bankReference: String?, transferGroupId: String?, isFee: Bool, createdAt: String, unsureTransfer: Bool = false) {
+    public init(id: String, occurredAt: String, type: TransactionType, amountMinor: Int, currency: Currency, defaultMinor: Int?, defaultCurrency: Currency, usdMinor: Int?, fxPerUsd: Double?, accountId: String, accountName: String, bank: Bank, title: String, counterpartyName: String?, counterpartyBank: String?, counterpartyAccount: String?, bankDescription: String?, userDescription: String?, categoryId: String?, categoryName: String?, source: TransactionSource, bankReference: String?, transferGroupId: String?, isFee: Bool, createdAt: String, unsureTransfer: Bool = false, userTitle: String? = nil) {
         self.id = id
         self.occurredAt = occurredAt
         self.type = type
@@ -104,6 +106,7 @@ public struct Transaction: Codable, Sendable, Hashable, Identifiable {
         self.accountName = accountName
         self.bank = bank
         self.title = title
+        self.userTitle = userTitle
         self.counterpartyName = counterpartyName
         self.counterpartyBank = counterpartyBank
         self.counterpartyAccount = counterpartyAccount
@@ -151,13 +154,19 @@ public struct Summary: Codable, Sendable, Hashable {
     public var spentUsdMinor: Int?
     public var incomeUsdMinor: Int?
     public var leftUsdMinor: Int?
+    /// Income minus spending across every month before this one. Nil from a server that predates it.
+    public var carryOverMinor: Int?
+    /// `carryOverMinor + incomeMinor - spentMinor`.
+    public var availableMinor: Int?
+    public var carryOverUsdMinor: Int?
+    public var availableUsdMinor: Int?
     public var todayPerUsd: Double?
     public var byCategory: [CategoryTotal]
     public var uncategorisedCount: Int
     public var lastAlertAt: String?
     public var trackedBanks: [Bank]
 
-    public init(month: String, currency: Currency, budgetMinor: Int?, spentMinor: Int, incomeMinor: Int, leftMinor: Int?, spentUsdMinor: Int?, incomeUsdMinor: Int?, leftUsdMinor: Int?, todayPerUsd: Double?, byCategory: [CategoryTotal], uncategorisedCount: Int, lastAlertAt: String?, trackedBanks: [Bank]) {
+    public init(month: String, currency: Currency, budgetMinor: Int?, spentMinor: Int, incomeMinor: Int, leftMinor: Int?, spentUsdMinor: Int?, incomeUsdMinor: Int?, leftUsdMinor: Int?, todayPerUsd: Double?, byCategory: [CategoryTotal], uncategorisedCount: Int, lastAlertAt: String?, trackedBanks: [Bank], carryOverMinor: Int? = nil, availableMinor: Int? = nil, carryOverUsdMinor: Int? = nil, availableUsdMinor: Int? = nil) {
         self.month = month
         self.currency = currency
         self.budgetMinor = budgetMinor
@@ -167,6 +176,10 @@ public struct Summary: Codable, Sendable, Hashable {
         self.spentUsdMinor = spentUsdMinor
         self.incomeUsdMinor = incomeUsdMinor
         self.leftUsdMinor = leftUsdMinor
+        self.carryOverMinor = carryOverMinor
+        self.availableMinor = availableMinor
+        self.carryOverUsdMinor = carryOverUsdMinor
+        self.availableUsdMinor = availableUsdMinor
         self.todayPerUsd = todayPerUsd
         self.byCategory = byCategory
         self.uncategorisedCount = uncategorisedCount
@@ -174,9 +187,14 @@ public struct Summary: Codable, Sendable, Hashable {
         self.trackedBanks = trackedBanks
     }
 
+    public var carriedOver: Int { carryOverMinor ?? 0 }
+    public var available: Int { availableMinor ?? (carriedOver + incomeMinor - spentMinor) }
+
+    /// Spending as a share of the budget, or of what there was to spend when no budget is set.
     public var spentFraction: Double? {
-        guard let budgetMinor, budgetMinor > 0 else { return nil }
-        return min(1, max(0, Double(spentMinor) / Double(budgetMinor)))
+        let base = budgetMinor ?? (carriedOver + incomeMinor)
+        guard base > 0 else { return nil }
+        return min(1, max(0, Double(spentMinor) / Double(base)))
     }
 }
 

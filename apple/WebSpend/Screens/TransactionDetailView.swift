@@ -11,6 +11,7 @@ struct TransactionDetailView: View {
     @State private var error: String?
     @State private var showCategories = false
     @State private var confirmDelete = false
+    @State private var showEdit = false
     @FocusState private var descriptionFocused: Bool
 
     init(transaction: Transaction) {
@@ -56,6 +57,12 @@ struct TransactionDetailView: View {
                 .frame(minWidth: 420, minHeight: 520)
                 #endif
         }
+        .sheet(isPresented: $showEdit) {
+            EditTransactionSheet(transaction: transaction) { request in
+                await save(request)
+                return error == nil
+            }
+        }
         .confirmationDialog("Delete this transaction?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { Task { await deleteTransaction() } }
         } message: {
@@ -68,6 +75,8 @@ struct TransactionDetailView: View {
             HStack(spacing: 10) {
                 BankBadge(bank: transaction.bank, type: transaction.type, size: 32)
                 Text(transaction.title).font(.ws(22, .bold)).tracking(-0.4).foregroundStyle(WS.ink)
+                Spacer(minLength: 8)
+                Button("Edit") { showEdit = true }.buttonStyle(LinkButtonStyle())
             }
             AmountText(transaction: transaction, size: 34)
                 .padding(.top, 4)
@@ -243,6 +252,116 @@ struct TransactionDetailView: View {
             dismiss()
         } catch {
             self.error = store.describe(error)
+        }
+    }
+}
+
+/// Title, amount, date and payee in one form. Only the fields that changed are sent.
+struct EditTransactionSheet: View {
+    let transaction: Transaction
+    /// Saves the changes and says whether they went through.
+    var onSave: @MainActor (UpdateTransactionRequest) async -> Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var amount: String
+    @State private var date: Date
+    @State private var payee: String
+    @State private var problem: String?
+    @State private var saving = false
+
+    private let originalDate: Date
+
+    init(transaction: Transaction, onSave: @escaping @MainActor (UpdateTransactionRequest) async -> Bool) {
+        self.transaction = transaction
+        self.onSave = onSave
+        let occurred = transaction.occurredDate ?? Date()
+        originalDate = occurred
+        _title = State(initialValue: transaction.userTitle ?? "")
+        _amount = State(initialValue: Self.plainAmount(transaction.amountMinor))
+        _date = State(initialValue: occurred)
+        _payee = State(initialValue: transaction.counterpartyName ?? "")
+    }
+
+    /// Minor units as the plain number a person would type: 4380000 → "43800.00".
+    private static func plainAmount(_ minor: Int) -> String {
+        let kobo = minor % 100
+        return "\(minor / 100).\(kobo < 10 ? "0" : "")\(kobo)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField(transaction.userTitle == nil ? transaction.title : "Title", text: $title)
+                } header: {
+                    Text("Title")
+                } footer: {
+                    Text("Leave blank to use the payee or the bank's text.")
+                }
+                Section("Amount (\(transaction.currency.rawValue))") {
+                    TextField("0.00", text: $amount)
+                        #if os(iOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                }
+                Section("Date and time") {
+                    DatePicker("Date and time", selection: $date, in: ...Date())
+                        .labelsHidden()
+                }
+                Section {
+                    TextField("Payee", text: $payee)
+                } header: {
+                    Text(transaction.type == .income ? "From" : "To")
+                } footer: {
+                    if transaction.source == .alert {
+                        Text("This came from a bank alert. Change the amount or date only if the alert was wrong.")
+                    }
+                }
+                if let problem {
+                    Text(problem).foregroundStyle(WS.danger)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit transaction")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { Task { await submit() } }.disabled(saving)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 420, minHeight: 440)
+        #endif
+    }
+
+    private func submit() async {
+        guard let amountMinor = Money.parseMinor(amount), amountMinor > 0 else {
+            problem = "Enter an amount above zero."
+            return
+        }
+        let newTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newPayee = payee.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var request = UpdateTransactionRequest()
+        if newTitle != (transaction.userTitle ?? "") { request.title = .some(newTitle.isEmpty ? nil : newTitle) }
+        if amountMinor != transaction.amountMinor { request.amountMinor = amountMinor }
+        if date != originalDate { request.occurredAt = ISO8601.string(date) }
+        if newPayee != (transaction.counterpartyName ?? "") { request.counterpartyName = .some(newPayee.isEmpty ? nil : newPayee) }
+        if request.isEmpty {
+            dismiss()
+            return
+        }
+
+        saving = true
+        defer { saving = false }
+        if await onSave(request) {
+            dismiss()
+        } else {
+            problem = "Could not save. Check your connection and try again."
         }
     }
 }

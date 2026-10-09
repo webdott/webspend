@@ -130,15 +130,26 @@ public struct UpdateTransactionRequest: Codable, Sendable, Hashable {
     public var rememberForPayee: Bool?
     public var userDescription: String??
     public var type: TransactionType?
+    /// The headline. `.some(nil)` goes back to the fallback title.
+    public var title: String??
+    public var occurredAt: String?
+    public var amountMinor: Int?
+    public var counterpartyName: String??
 
-    public init(categoryId: String?? = nil, rememberForPayee: Bool? = nil, userDescription: String?? = nil, type: TransactionType? = nil) {
+    public init(categoryId: String?? = nil, rememberForPayee: Bool? = nil, userDescription: String?? = nil, type: TransactionType? = nil, title: String?? = nil, occurredAt: String? = nil, amountMinor: Int? = nil, counterpartyName: String?? = nil) {
         self.categoryId = categoryId
         self.rememberForPayee = rememberForPayee
         self.userDescription = userDescription
         self.type = type
+        self.title = title
+        self.occurredAt = occurredAt
+        self.amountMinor = amountMinor
+        self.counterpartyName = counterpartyName
     }
 
-    enum CodingKeys: String, CodingKey { case categoryId, rememberForPayee, userDescription, type }
+    public var isEmpty: Bool { self == UpdateTransactionRequest() }
+
+    enum CodingKeys: String, CodingKey { case categoryId, rememberForPayee, userDescription, type, title, occurredAt, amountMinor, counterpartyName }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -146,6 +157,10 @@ public struct UpdateTransactionRequest: Codable, Sendable, Hashable {
         try c.encodeIfPresent(rememberForPayee, forKey: .rememberForPayee)
         try encodeNullable(userDescription, forKey: .userDescription, into: &c)
         try c.encodeIfPresent(type, forKey: .type)
+        try encodeNullable(title, forKey: .title, into: &c)
+        try c.encodeIfPresent(occurredAt, forKey: .occurredAt)
+        try c.encodeIfPresent(amountMinor, forKey: .amountMinor)
+        try encodeNullable(counterpartyName, forKey: .counterpartyName, into: &c)
     }
 
     public init(from decoder: Decoder) throws {
@@ -154,6 +169,10 @@ public struct UpdateTransactionRequest: Codable, Sendable, Hashable {
         rememberForPayee = try c.decodeIfPresent(Bool.self, forKey: .rememberForPayee)
         userDescription = try decodeNullable(String.self, forKey: .userDescription, from: c)
         type = try c.decodeIfPresent(TransactionType.self, forKey: .type)
+        title = try decodeNullable(String.self, forKey: .title, from: c)
+        occurredAt = try c.decodeIfPresent(String.self, forKey: .occurredAt)
+        amountMinor = try c.decodeIfPresent(Int.self, forKey: .amountMinor)
+        counterpartyName = try decodeNullable(String.self, forKey: .counterpartyName, from: c)
     }
 }
 
@@ -343,11 +362,17 @@ public struct ImportCommitResponse: Codable, Sendable, Hashable {
     public var added: Int
     public var skipped: Int
     public var errors: [ImportRowError]
-    public init(importId: String, added: Int, skipped: Int, errors: [ImportRowError]) {
+    /// Categories this import added to the user's list.
+    public var categoriesCreated: Int?
+    /// Transactions already logged that this import gave a category.
+    public var categorised: Int?
+    public init(importId: String, added: Int, skipped: Int, errors: [ImportRowError], categoriesCreated: Int? = nil, categorised: Int? = nil) {
         self.importId = importId
         self.added = added
         self.skipped = skipped
         self.errors = errors
+        self.categoriesCreated = categoriesCreated
+        self.categorised = categorised
     }
 }
 

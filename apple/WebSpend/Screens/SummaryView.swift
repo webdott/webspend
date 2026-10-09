@@ -7,7 +7,7 @@ struct SummaryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                MonthNav(title: store.monthTitle, compact: isMac, onPrevious: store.goToPreviousMonth, onNext: store.goToNextMonth)
+                MonthNav(month: store.month, compact: isMac, onPick: { store.goToMonth($0) })
                 content
             }
             .padding(WSLayout.pagePadding)

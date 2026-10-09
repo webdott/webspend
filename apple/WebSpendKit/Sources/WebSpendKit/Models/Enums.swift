@@ -90,10 +90,10 @@ public enum ImportFormat: String, Codable, CaseIterable, Sendable, Hashable {
 }
 
 public enum ImportField: String, Codable, CaseIterable, Sendable, Hashable {
-    case date, amount, debit, credit, description, counterparty, reference, balance, ignore
+    case date, amount, debit, credit, description, counterparty, category, reference, balance, ignore
 
     public static let all: [ImportField] = [
-        .date, .amount, .debit, .credit, .description, .counterparty, .reference, .balance, .ignore,
+        .date, .amount, .debit, .credit, .description, .counterparty, .category, .reference, .balance, .ignore,
     ]
 
     public var label: String {
@@ -104,6 +104,7 @@ public enum ImportField: String, Codable, CaseIterable, Sendable, Hashable {
         case .credit: "Credit"
         case .description: "Description"
         case .counterparty: "Counterparty"
+        case .category: "Category"
         case .reference: "Reference"
         case .balance: "Balance"
         case .ignore: "Ignore"

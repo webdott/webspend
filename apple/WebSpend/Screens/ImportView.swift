@@ -193,12 +193,23 @@ struct ImportView: View {
         }
     }
 
+    private static func resultLine(_ result: ImportCommitResponse) -> String {
+        var parts = ["Added \(result.added)", "Skipped \(result.skipped)"]
+        if let created = result.categoriesCreated, created > 0 {
+            parts.append("\(created) new \(created == 1 ? "category" : "categories")")
+        }
+        if let categorised = result.categorised, categorised > 0 {
+            parts.append("\(categorised) already logged given a category")
+        }
+        return parts.joined(separator: " · ")
+    }
+
     @ViewBuilder private var resultSection: some View {
         if let result {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(WS.accent)
-                    Text("Added \(result.added) · Skipped \(result.skipped)").font(.ws(16, .semibold)).foregroundStyle(WS.ink)
+                    Text(Self.resultLine(result)).font(.ws(16, .semibold)).foregroundStyle(WS.ink)
                 }
                 if !result.errors.isEmpty {
                     ForEach(result.errors) { error in

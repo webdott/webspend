@@ -23,6 +23,11 @@ enum Dates {
         return formatter("MMMM yyyy").string(from: date)
     }
 
+    static func monthName(_ id: String) -> String {
+        guard let date = monthDate(id) else { return id }
+        return formatter("MMMM").string(from: date)
+    }
+
     static func dayHeading(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Today" }

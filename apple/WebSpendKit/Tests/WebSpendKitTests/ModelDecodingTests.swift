@@ -133,6 +133,10 @@ import Testing
         let roundTrip = try decoder.decode(UpdateTransactionRequest.self, from: try encoder.encode(clearCategory))
         #expect(roundTrip.categoryId == .some(nil))
         #expect(roundTrip.userDescription == nil)
+
+        let edit = UpdateTransactionRequest(title: .some(nil), amountMinor: 1050, counterpartyName: "Ada")
+        #expect(String(decoding: try encoder.encode(edit), as: UTF8.self) == #"{"amountMinor":1050,"counterpartyName":"Ada","title":null}"#)
+        #expect(UpdateTransactionRequest().isEmpty && !edit.isEmpty)
     }
 
     @Test func callbackTokenParsing() {

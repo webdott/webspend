@@ -280,15 +280,21 @@ final class AppStore {
         }
     }
 
+    /// Months after the current one cannot be opened.
+    var canGoToNextMonth: Bool { month < Dates.monthID() }
+
     func goToPreviousMonth() {
-        month = Dates.shiftMonth(month, by: -1)
-        summary = .loading
-        latest = .loading
-        Task { await loadSummary() }
+        goToMonth(Dates.shiftMonth(month, by: -1))
     }
 
     func goToNextMonth() {
-        month = Dates.shiftMonth(month, by: 1)
+        goToMonth(Dates.shiftMonth(month, by: 1))
+    }
+
+    func goToMonth(_ id: String) {
+        let target = min(id, Dates.monthID())
+        guard target != month else { return }
+        month = target
         summary = .loading
         latest = .loading
         Task { await loadSummary() }
@@ -461,6 +467,17 @@ final class AppStore {
         do {
             _ = try await api.createAccount(request)
             await loadAccounts()
+        } catch {
+            toast = describe(error)
+        }
+    }
+
+    func updateAccount(id: String, name: String, accountNumber: String?) async {
+        do {
+            _ = try await api.updateAccount(id: id, UpdateAccountRequest(name: name, accountNumber: .some(accountNumber)))
+            await loadAccounts()
+            await loadTransactions()
+            await loadSummary()
         } catch {
             toast = describe(error)
         }

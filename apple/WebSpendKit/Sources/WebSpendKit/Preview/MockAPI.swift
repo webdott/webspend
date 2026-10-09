@@ -55,6 +55,7 @@ public actor MockAPI: WebSpendAPI {
         summary.leftMinor = user.monthlyBudgetMinor.map { $0 - summary.spentMinor }
         summary.leftUsdMinor = summary.leftMinor.map { Money.toUsdMinor($0, perUsd: Fixtures.rate) }
         summary.todayPerUsd = user.defaultCurrency == .usd ? nil : Fixtures.rate
+        summary.carryOverMinor = month == Fixtures.currentMonth ? 64_000_000 : 0
         summary.uncategorisedCount = transactionsStore.filter { $0.needsCategory && $0.occurredAt.hasPrefix(month) }.count
         if month != Fixtures.currentMonth {
             summary.spentMinor = 0
@@ -65,6 +66,9 @@ public actor MockAPI: WebSpendAPI {
             summary.leftUsdMinor = summary.leftMinor.map { Money.toUsdMinor($0, perUsd: Fixtures.rate) }
             summary.byCategory = []
         }
+        summary.availableMinor = summary.carriedOver + summary.incomeMinor - summary.spentMinor
+        summary.carryOverUsdMinor = Money.toUsdMinor(summary.carriedOver, perUsd: Fixtures.rate)
+        summary.availableUsdMinor = Money.toUsdMinor(summary.available, perUsd: Fixtures.rate)
         return summary
     }
 
@@ -115,7 +119,21 @@ public actor MockAPI: WebSpendAPI {
         }
         if let description = request.userDescription {
             t.userDescription = description?.isEmpty == true ? nil : description
-            t.title = t.userDescription ?? t.counterpartyName ?? t.bankDescription ?? t.title
+        }
+        if let title = request.title {
+            t.userTitle = title?.isEmpty == true ? nil : title
+        }
+        if let payee = request.counterpartyName {
+            t.counterpartyName = payee?.isEmpty == true ? nil : payee
+        }
+        if let amountMinor = request.amountMinor {
+            t.amountMinor = amountMinor
+            t.defaultMinor = t.currency == .usd ? Int((Double(amountMinor) * Fixtures.rate).rounded()) : amountMinor
+            t.usdMinor = t.currency == .usd ? amountMinor : Money.toUsdMinor(amountMinor, perUsd: Fixtures.rate)
+        }
+        if let occurredAt = request.occurredAt { t.occurredAt = occurredAt }
+        if request.title != nil || request.userDescription != nil || request.counterpartyName != nil {
+            t.title = t.userTitle ?? t.userDescription ?? t.counterpartyName ?? t.bankDescription ?? "Transaction"
         }
         if let type = request.type {
             t.type = type

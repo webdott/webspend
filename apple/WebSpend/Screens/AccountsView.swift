@@ -4,6 +4,7 @@ import WebSpendKit
 struct AccountsView: View {
     @Environment(AppStore.self) private var store
     @State private var showAdd = false
+    @State private var editing: Account?
 
     var body: some View {
         ScrollView {
@@ -29,6 +30,9 @@ struct AccountsView: View {
         }
         .sheet(isPresented: $showAdd) {
             AddAccountSheet().environment(store)
+        }
+        .sheet(item: $editing) { account in
+            EditAccountSheet(account: account).environment(store)
         }
     }
 
@@ -74,6 +78,13 @@ struct AccountsView: View {
                                         .font(.wsMono(12, .regular)).foregroundStyle(WS.muted)
                                 }
                                 Spacer()
+                                Button {
+                                    editing = account
+                                } label: {
+                                    Image(systemName: "pencil").foregroundStyle(WS.accentText)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Edit \(account.name)")
                                 if !account.tracked {
                                     Button {
                                         Task { await store.deleteAccount(id: account.id) }
@@ -183,6 +194,54 @@ struct AddAccountSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 380, minHeight: 260)
+        #endif
+    }
+}
+
+struct EditAccountSheet: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let account: Account
+    @State private var name: String
+    @State private var number: String
+
+    init(account: Account) {
+        self.account = account
+        _name = State(initialValue: account.name)
+        _number = State(initialValue: account.accountNumber ?? "")
+    }
+
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(account.bank.label) {
+                    TextField("Name", text: $name)
+                    TextField("Account number", text: $number)
+                        #if os(iOS)
+                        .keyboardType(.numberPad)
+                        #endif
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit account")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let trimmedNumber = number.trimmingCharacters(in: .whitespaces)
+                        Task {
+                            await store.updateAccount(id: account.id, name: trimmedName, accountNumber: trimmedNumber.isEmpty ? nil : trimmedNumber)
+                        }
+                        dismiss()
+                    }
+                    .disabled(trimmedName.isEmpty)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 380, minHeight: 240)
         #endif
     }
 }
