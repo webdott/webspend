@@ -43,9 +43,8 @@ The landing page is `landing/index.html`; see `landing/README.md`.
 
 Money is logged only when it crosses the edge of the accounts that belong to the user. Movement
 inside that edge is a transfer to self and stays out of the totals. Each bank has a
-"tracking from" time set when it is switched on; emails before it are never read. Every alert
-carries the balance after the transaction, so a missed one shows up as a gap to fill by importing
-a statement. Small unexplained drops are logged as fees. See `server/README.md` for the rules.
+"tracking from" time set when it is switched on; emails before it are never read. Anything the
+alerts miss is added by importing a statement. See `server/README.md` for the rules.
 
 ## Adding a bank
 

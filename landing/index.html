@@ -290,12 +290,10 @@
                 can be re-marked as an expense, income or a transfer to self if WebSpend gets it
                 wrong.
               </p>
-              <h3>The balance check</h3>
+              <h3>Statement import</h3>
               <p>
-                Every alert carries the balance after the transaction. If the previous balance plus
-                or minus the new amount does not match, something was missed. WebSpend flags the gap
-                and asks for a statement import (CSV or JSON) covering that period. Small
-                unexplained drops are logged as fees.
+                Alerts can miss things. Import a statement (CSV or JSON) for any period and WebSpend
+                adds what is missing and skips what it already has.
               </p>
               <h3>Naira first, dollars beside it</h3>
               <p>
@@ -402,7 +400,9 @@
                 <path d="M2.5 12h19M12 2.5c3 3 3 16 0 19M12 2.5c-3 3-3 16 0 19" />
               </svg>
               <h3>Web</h3>
-              <p>The full dashboard in any browser, with statement import for filling gaps.</p>
+              <p>
+                The full dashboard in any browser, with statement import for anything alerts missed.
+              </p>
             </li>
           </ul>
         </div>
