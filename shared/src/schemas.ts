@@ -23,6 +23,10 @@ export const updateSettingsSchema = z
 
 export const updateTransactionSchema = z
   .object({
+    title: z.string().trim().max(200).nullable(),
+    occurredAt: isoDateTimeSchema,
+    amountMinor: minorSchema.min(1),
+    counterpartyName: z.string().trim().max(200).nullable(),
     categoryId: z.string().nullable(),
     rememberForPayee: z.boolean(),
     userDescription: z.string().max(2000).nullable(),

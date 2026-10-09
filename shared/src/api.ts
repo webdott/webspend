@@ -97,8 +97,13 @@ export type Transaction = {
   accountId: string;
   accountName: string;
   bank: Bank;
-  /** What the apps show as the headline: the user's description, else the payee, else the bank text. */
+  /**
+   * What the apps show as the headline: the user's title, else their description, else the
+   * payee, else the bank text.
+   */
   title: string;
+  /** The headline the user typed, or null while `title` is one of the fallbacks. */
+  userTitle: string | null;
   counterpartyName: string | null;
   counterpartyBank: string | null;
   counterpartyAccount: string | null;
@@ -233,6 +238,12 @@ export type TransactionResponse = { transaction: Transaction };
 
 /** PATCH /api/transactions/:id */
 export type UpdateTransactionRequest = {
+  /** The headline. Null or blank goes back to the fallback title. */
+  title?: string | null;
+  /** Moving the date re-stamps the exchange rate with that day's. */
+  occurredAt?: string;
+  amountMinor?: number;
+  counterpartyName?: string | null;
   categoryId?: string | null;
   /** Save `categoryId` for this payee so future alerts from them are categorised. */
   rememberForPayee?: boolean;
