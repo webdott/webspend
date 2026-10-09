@@ -5,21 +5,25 @@
 #   ./scripts/commit-changes.sh 2 3       run only phases 2 and 3
 #   ./scripts/commit-changes.sh --list    print the phases and their commit titles
 #
-# This round: a script that builds the Mac app into a DMG, and one that archives the iPhone app
-# under the personal team and uploads it to TestFlight. CLAUDE.md is untracked and no phase
+# This round: export as CSV or PDF in the Mac and iPhone apps, the app icons, and a script that
+# installs the iPhone app with the free personal team. CLAUDE.md is untracked and no phase
 # touches it. Safe to re-run: a phase with nothing new to commit is skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TITLES=(
-  "chore: scripts to build the Mac DMG and ship the iPhone app to TestFlight"
+  "feat(apple): export transactions as CSV or PDF for a range of days"
+  "feat(apple): app icons from the brand mark"
+  "chore: script that installs the iPhone app with the personal team"
   "chore: update the commit script"
 )
 
 paths_for() {
   case "$1" in
-    1) echo "scripts/make-dmg.sh scripts/ship-ios.sh apple/ExportOptions.plist" ;;
-    2) echo "scripts/commit-changes.sh" ;;
+    1) echo "apple/WebSpendKit apple/WebSpend/Screens apple/WebSpend/Store apple/WebSpend/App" ;;
+    2) echo "apple/WebSpend/Resources" ;;
+    3) echo "scripts/install-iphone.sh" ;;
+    4) echo "scripts/commit-changes.sh" ;;
     *) echo "Unknown phase: $1 (there are ${#TITLES[@]})" >&2; exit 1 ;;
   esac
 }
