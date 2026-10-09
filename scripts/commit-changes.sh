@@ -5,27 +5,29 @@
 #   ./scripts/commit-changes.sh 2 3       run only phases 2 and 3
 #   ./scripts/commit-changes.sh --list    print the phases and their commit titles
 #
-# This round: editing a transaction's title, amount, date and payee, renaming accounts, and the
-# month picker, carry-over and new summary card on Mac and iPhone. Safe to re-run: a phase with
-# nothing new to commit is skipped.
+# This round: sign-in checks the email permission, the poller recovers from a revoked token, and
+# a file can be imported with no account. Safe to re-run: a phase with nothing new to commit is
+# skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TITLES=(
-  "feat(shared): add editable transaction fields to the contract"
-  "feat(server): let a transaction's title, amount, date and payee be edited"
-  "feat(web): edit transaction details and rename accounts"
-  "feat(apple): add month picker, carry-over, new summary card and editing"
+  "feat(shared): add the no-account import option to the contract"
+  "fix(server): require the email permission at sign-in and retry a revoked Gmail token"
+  "feat(server): import a file with no account"
+  "feat(web): import a file with no account"
+  "feat(apple): import a file with no account"
   "chore: update the commit script"
 )
 
 paths_for() {
   case "$1" in
     1) echo "shared" ;;
-    2) echo "server" ;;
-    3) echo "web" ;;
-    4) echo "apple" ;;
-    5) echo "scripts" ;;
+    2) echo "server/src/auth server/src/intake" ;;
+    3) echo "server" ;;
+    4) echo "web" ;;
+    5) echo "apple" ;;
+    6) echo "scripts" ;;
     *) echo "Unknown phase: $1 (there are ${#TITLES[@]})" >&2; exit 1 ;;
   esac
 }
