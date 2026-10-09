@@ -140,6 +140,15 @@ export type Summary = {
   spentUsdMinor: number | null;
   incomeUsdMinor: number | null;
   leftUsdMinor: number | null;
+  /**
+   * Income minus spending across every month before this one: what the month started with.
+   * Negative when earlier months spent more than came in.
+   */
+  carryOverMinor: number;
+  /** `carryOverMinor + incomeMinor - spentMinor`: what is on hand once this month is counted. */
+  availableMinor: number;
+  carryOverUsdMinor: number | null;
+  availableUsdMinor: number | null;
   /** Units of the default currency per one US dollar today, or null if USD is the default. */
   todayPerUsd: number | null;
   byCategory: CategoryTotal[];
@@ -296,6 +305,7 @@ export type ImportField =
   | 'credit'
   | 'description'
   | 'counterparty'
+  | 'category'
   | 'reference'
   | 'balance'
   | 'ignore';
@@ -307,6 +317,7 @@ export const IMPORT_FIELDS: readonly ImportField[] = [
   'credit',
   'description',
   'counterparty',
+  'category',
   'reference',
   'balance',
   'ignore',
@@ -336,7 +347,12 @@ export type ImportPreviewResponse = {
   dateAmbiguous: boolean;
 };
 
-/** POST /api/imports  Commits the import. Rows matching an existing transaction are skipped. */
+/**
+ * POST /api/imports  Commits the import. Rows matching an existing transaction are skipped.
+ * When a `category` column is mapped, names not on the user's list are added to it, new rows
+ * are filed under their category, and a skipped row hands its category to the transaction it
+ * matches if that one has none.
+ */
 export type ImportCommitRequest = {
   accountId: string;
   format: ImportFormat;
@@ -347,6 +363,10 @@ export type ImportCommitResponse = {
   importId: string;
   added: number;
   skipped: number;
+  /** Categories added to the user's list by this import. */
+  categoriesCreated: number;
+  /** Transactions already in the ledger that this import gave a category. */
+  categorised: number;
   /** Row numbers (1-based, excluding the header) that could not be read, with the reason. */
   errors: { row: number; reason: string }[];
 };
