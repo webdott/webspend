@@ -75,10 +75,6 @@ public enum AccountStatus: String, Codable, CaseIterable, Sendable, Hashable {
     case tracking
 }
 
-public enum GapStatus: String, Codable, CaseIterable, Sendable, Hashable {
-    case open, filled, dismissed
-}
-
 public enum RawAlertStatus: String, Codable, CaseIterable, Sendable, Hashable {
     case parsed
     case unknownSender = "unknown_sender"

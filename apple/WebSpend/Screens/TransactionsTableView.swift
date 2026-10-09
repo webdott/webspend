@@ -67,8 +67,8 @@ struct TransactionsTableView: View {
                         }
                     }
                     TableColumn("Category") { t in
-                        Text(t.type == .expense ? (t.categoryName ?? "Needs a category") : (t.type == .income ? "Income" : "Transfer to self"))
-                            .foregroundStyle(t.needsCategory ? WS.accentText : WS.muted)
+                        Text((t.type == .expense ? (t.categoryName ?? "Needs a category") : (t.type == .income ? "Income" : "Transfer to self")) + (t.unsureTransfer ? " · Unsure" : ""))
+                            .foregroundStyle(t.needsCategory || t.unsureTransfer ? WS.accentText : WS.muted)
                     }
                     TableColumn("Account") { t in Text(t.accountName).foregroundStyle(WS.muted) }
                     TableColumn("Amount") { t in

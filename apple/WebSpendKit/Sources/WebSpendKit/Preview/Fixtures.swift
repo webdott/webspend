@@ -51,7 +51,6 @@ public enum Fixtures {
                 CategoryTotal(categoryId: "c_data", name: "Data & airtime", minor: 2_800_000, usdMinor: 1_867, count: 4),
             ],
             uncategorisedCount: 2,
-            openGapCount: 1,
             lastAlertAt: iso(minutesAgo: 12),
             trackedBanks: [.grey, .opay, .moniepoint, .gtbank]
         )
@@ -78,10 +77,6 @@ public enum Fixtures {
         ngn("t_transfer_gt", at: iso(daysAgo: 7, hour: 10, minute: 2), type: .transfer, minor: 50_000_000, account: "a_gtbank", name: "GTBank savings", bank: .gtbank, title: "From Grey", counterparty: "Grey", bankDescription: "Transfer from GREY FINANCE", category: nil, reference: "GT2510021002", transferGroup: "tg_1"),
         ngn("t_rent", at: iso(daysAgo: 8, hour: 11, minute: 20), type: .expense, minor: 45_000_000, account: "a_gtbank", name: "GTBank savings", bank: .gtbank, title: "October rent", counterparty: "ADEYEMI O.", counterpartyBank: "Access Bank", bankDescription: "Transfer to ADEYEMI O. 0987654321 Access Bank — October rent", userDescription: "October rent", category: ("c_rent", "Rent & housing"), reference: "GT2510011120"),
         Transaction(id: "t_salary", occurredAt: iso(daysAgo: 8, hour: 9, minute: 0), type: .income, amountMinor: 200_000, currency: .usd, defaultMinor: 300_000_000, defaultCurrency: .ngn, usdMinor: 200_000, fxPerUsd: 1, accountId: "a_grey", accountName: "Grey", bank: .grey, title: "Acme Ltd", counterpartyName: "Acme Ltd", counterpartyBank: nil, counterpartyAccount: nil, bankDescription: "You received $2,000.00 from ACME LTD", userDescription: nil, categoryId: nil, categoryName: nil, source: .alert, bankReference: "GREY-88213", transferGroupId: nil, isFee: false, createdAt: iso(daysAgo: 8, hour: 9, minute: 1)),
-    ]
-
-    public static let gaps: [Gap] = [
-        Gap(id: "g_1", accountId: "a_moniepoint", accountName: "Moniepoint", bank: .moniepoint, fromAt: iso(daysAgo: 5, hour: 8, minute: 0), toAt: iso(daysAgo: 4, hour: 20, minute: 0), expectedBalanceMinor: 20_120_000, actualBalanceMinor: 18_920_000, differenceMinor: -1_200_000, currency: .ngn, status: .open, createdAt: iso(daysAgo: 4, hour: 20, minute: 1)),
     ]
 
     public static let rates: [FxRate] = [

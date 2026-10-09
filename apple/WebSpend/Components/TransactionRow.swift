@@ -40,7 +40,8 @@ struct TransactionRow: View {
         case .income:
             first = Text("Income").foregroundStyle(WS.muted)
         }
-        return (first + Text(" · \(transaction.accountName)").foregroundStyle(WS.muted))
+        let unsure = Text(transaction.unsureTransfer ? " · Unsure" : "").foregroundStyle(WS.accentText)
+        return (first + unsure + Text(" · \(transaction.accountName)").foregroundStyle(WS.muted))
             .font(.ws(13))
             .lineLimit(1)
             .truncationMode(.tail)

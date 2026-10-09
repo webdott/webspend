@@ -33,7 +33,7 @@ import Testing
             "source": "alert",
             "bankReference": "000123456789",
             "transferGroupId": null,
-            "isFee": false,
+            "isFee": false, "unsureTransfer": false,
             "createdAt": "2026-10-09T09:12:30.123+01:00"
           }],
           "hasMore": false
@@ -65,7 +65,7 @@ import Testing
             { "categoryId": "c_rent", "name": "Rent & housing", "minor": 45000000, "usdMinor": 30000, "count": 1 },
             { "categoryId": null, "name": "Needs a category", "minor": 5630000, "usdMinor": null, "count": 2 }
           ],
-          "uncategorisedCount": 2, "openGapCount": 1, "lastAlertAt": null, "trackedBanks": ["grey", "opay"]
+          "uncategorisedCount": 2, "lastAlertAt": null, "trackedBanks": ["grey", "opay"]
         }
         """
         let summary = try decoder.decode(Summary.self, from: Data(json.utf8))
@@ -77,7 +77,7 @@ import Testing
         #expect(summary.spentFraction == 0.65)
     }
 
-    @Test func decodesAccountsGapsMetaAndErrors() throws {
+    @Test func decodesAccountsMetaAndErrors() throws {
         let account = try decoder.decode(Account.self, from: Data("""
         { "id": "a_1", "bank": "uba", "name": "UBA", "accountNumber": "2098765432", "currency": "NGN", "isOwn": true,
           "tracked": true, "trackingFrom": "2026-10-07T10:00:00+01:00", "status": "waiting",
@@ -85,15 +85,6 @@ import Testing
         """.utf8))
         #expect(account.status == .waiting)
         #expect(account.lastBalanceMinor == nil)
-
-        let gap = try decoder.decode(Gap.self, from: Data("""
-        { "id": "g_1", "accountId": "a_1", "accountName": "Moniepoint", "bank": "moniepoint",
-          "fromAt": "2026-10-04T08:00:00+01:00", "toAt": "2026-10-05T20:00:00+01:00",
-          "expectedBalanceMinor": 20120000, "actualBalanceMinor": 18920000, "differenceMinor": -1200000,
-          "currency": "NGN", "status": "open", "createdAt": "2026-10-05T20:01:00+01:00" }
-        """.utf8))
-        #expect(gap.status == .open)
-        #expect(gap.differenceMinor == -1_200_000)
 
         let meta = try decoder.decode(Meta.self, from: Data(#"{ "version": "0.1.0", "googleAuth": true, "devAuth": false }"#.utf8))
         #expect(meta.googleAuth && !meta.devAuth)

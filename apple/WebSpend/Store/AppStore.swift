@@ -9,6 +9,7 @@ final class AppStore {
     enum Filter: String, CaseIterable, Identifiable {
         case all = "All"
         case needsCategory = "Needs a category"
+        case unsure = "Unsure"
         case expenses = "Expenses"
         case income = "Income"
         case transfers = "Transfers"
@@ -62,11 +63,9 @@ final class AppStore {
     var filter: Filter = .all
     var categories: Loadable<[Category]> = .idle
     var accounts: Loadable<[Account]> = .idle
-    var gaps: Loadable<[Gap]> = .idle
     var rates: [FxRate] = []
 
     var macSection: MacSection = .summary
-    var pendingImportGap: Gap?
 
     init() {
         let url = SessionStorage.serverURL
@@ -244,14 +243,12 @@ final class AppStore {
         transactions = .idle
         categories = .idle
         accounts = .idle
-        gaps = .idle
         rates = []
         hasMoreTransactions = false
         searchText = ""
         filter = .all
         month = Dates.monthID()
         macSection = .summary
-        pendingImportGap = nil
     }
 
     // MARK: Loading
@@ -261,9 +258,8 @@ final class AppStore {
         async let b: Void = loadTransactions()
         async let c: Void = loadCategories()
         async let d: Void = loadAccounts()
-        async let e: Void = loadGaps()
-        async let f: Void = loadRates()
-        _ = await (a, b, c, d, e, f)
+        async let e: Void = loadRates()
+        _ = await (a, b, c, d, e)
     }
 
     func loadSummary() async {
@@ -304,6 +300,7 @@ final class AppStore {
         switch filter {
         case .all: break
         case .needsCategory: query.categoryId = TransactionQuery.uncategorised
+        case .unsure: query.unsure = true
         case .expenses: query.type = .expense
         case .income: query.type = .income
         case .transfers: query.type = .transfer
@@ -355,15 +352,6 @@ final class AppStore {
             accounts = .loaded(try await api.accounts())
         } catch {
             accounts = .failed(describe(error))
-        }
-    }
-
-    func loadGaps() async {
-        if gaps.value == nil { gaps = .loading }
-        do {
-            gaps = .loaded(try await api.gaps(status: .open))
-        } catch {
-            gaps = .failed(describe(error))
         }
     }
 
@@ -450,7 +438,7 @@ final class AppStore {
         }
     }
 
-    // MARK: Accounts and gaps
+    // MARK: Accounts
 
     func setTracking(bank: Bank, on: Bool) async {
         do {
@@ -482,16 +470,6 @@ final class AppStore {
         do {
             try await api.deleteAccount(id: id)
             await loadAccounts()
-        } catch {
-            toast = describe(error)
-        }
-    }
-
-    func dismissGap(id: String) async {
-        do {
-            _ = try await api.updateGap(id: id, UpdateGapRequest(status: .dismissed))
-            await loadGaps()
-            await loadSummary()
         } catch {
             toast = describe(error)
         }

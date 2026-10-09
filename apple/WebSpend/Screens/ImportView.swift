@@ -4,7 +4,6 @@ import WebSpendKit
 
 struct ImportView: View {
     @Environment(AppStore.self) private var store
-    var gap: Gap? = nil
 
     @State private var accountId: String = ""
     @State private var fileName: String?
@@ -17,29 +16,14 @@ struct ImportView: View {
     @State private var result: ImportCommitResponse?
     @State private var commitError: String?
 
-    private var activeGap: Gap? { gap ?? store.pendingImportGap }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 #if os(macOS)
                 Text("Import").font(.ws(28, .bold)).tracking(-0.56).foregroundStyle(WS.ink)
                 #endif
-                Text("Fill a gap from a bank statement. CSV and JSON only; rows that match an existing transaction are skipped.")
+                Text("Import a bank statement. CSV and JSON only; rows that match an existing transaction are skipped.")
                     .font(.ws(14)).foregroundStyle(WS.muted)
-
-                if let activeGap {
-                    HStack {
-                        Image(systemName: "exclamationmark.circle").foregroundStyle(WS.accentText)
-                        Text("Filling the \(activeGap.accountName) gap from \(Dates.short(iso: activeGap.fromAt)) to \(Dates.short(iso: activeGap.toAt)).")
-                            .font(.ws(13)).foregroundStyle(WS.ink)
-                        Spacer()
-                        if gap == nil {
-                            Button { store.pendingImportGap = nil } label: { Image(systemName: "xmark").foregroundStyle(WS.muted) }.buttonStyle(.plain)
-                        }
-                    }
-                    .wsCard(padding: 12)
-                }
 
                 stepAccount
                 stepFile
@@ -63,7 +47,7 @@ struct ImportView: View {
         .task {
             if store.accounts.value == nil { await store.loadAccounts() }
             if accountId.isEmpty {
-                accountId = activeGap?.accountId ?? store.accounts.value?.first { $0.bank.isTracked }?.id ?? ""
+                accountId = store.accounts.value?.first { $0.bank.isTracked }?.id ?? ""
             }
         }
     }
@@ -261,9 +245,8 @@ struct ImportView: View {
         committing = true
         defer { committing = false }
         do {
-            result = try await store.importCommit(ImportCommitRequest(accountId: accountId, format: format, content: content, mapping: mapping, gapId: activeGap?.id))
+            result = try await store.importCommit(ImportCommitRequest(accountId: accountId, format: format, content: content, mapping: mapping))
             commitError = nil
-            if gap == nil { store.pendingImportGap = nil }
         } catch {
             commitError = store.describe(error)
         }

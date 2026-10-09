@@ -87,9 +87,10 @@ public struct Transaction: Codable, Sendable, Hashable, Identifiable {
     public var bankReference: String?
     public var transferGroupId: String?
     public var isFee: Bool
+    public var unsureTransfer: Bool
     public var createdAt: String
 
-    public init(id: String, occurredAt: String, type: TransactionType, amountMinor: Int, currency: Currency, defaultMinor: Int?, defaultCurrency: Currency, usdMinor: Int?, fxPerUsd: Double?, accountId: String, accountName: String, bank: Bank, title: String, counterpartyName: String?, counterpartyBank: String?, counterpartyAccount: String?, bankDescription: String?, userDescription: String?, categoryId: String?, categoryName: String?, source: TransactionSource, bankReference: String?, transferGroupId: String?, isFee: Bool, createdAt: String) {
+    public init(id: String, occurredAt: String, type: TransactionType, amountMinor: Int, currency: Currency, defaultMinor: Int?, defaultCurrency: Currency, usdMinor: Int?, fxPerUsd: Double?, accountId: String, accountName: String, bank: Bank, title: String, counterpartyName: String?, counterpartyBank: String?, counterpartyAccount: String?, bankDescription: String?, userDescription: String?, categoryId: String?, categoryName: String?, source: TransactionSource, bankReference: String?, transferGroupId: String?, isFee: Bool, createdAt: String, unsureTransfer: Bool = false) {
         self.id = id
         self.occurredAt = occurredAt
         self.type = type
@@ -114,6 +115,7 @@ public struct Transaction: Codable, Sendable, Hashable, Identifiable {
         self.bankReference = bankReference
         self.transferGroupId = transferGroupId
         self.isFee = isFee
+        self.unsureTransfer = unsureTransfer
         self.createdAt = createdAt
     }
 
@@ -152,11 +154,10 @@ public struct Summary: Codable, Sendable, Hashable {
     public var todayPerUsd: Double?
     public var byCategory: [CategoryTotal]
     public var uncategorisedCount: Int
-    public var openGapCount: Int
     public var lastAlertAt: String?
     public var trackedBanks: [Bank]
 
-    public init(month: String, currency: Currency, budgetMinor: Int?, spentMinor: Int, incomeMinor: Int, leftMinor: Int?, spentUsdMinor: Int?, incomeUsdMinor: Int?, leftUsdMinor: Int?, todayPerUsd: Double?, byCategory: [CategoryTotal], uncategorisedCount: Int, openGapCount: Int, lastAlertAt: String?, trackedBanks: [Bank]) {
+    public init(month: String, currency: Currency, budgetMinor: Int?, spentMinor: Int, incomeMinor: Int, leftMinor: Int?, spentUsdMinor: Int?, incomeUsdMinor: Int?, leftUsdMinor: Int?, todayPerUsd: Double?, byCategory: [CategoryTotal], uncategorisedCount: Int, lastAlertAt: String?, trackedBanks: [Bank]) {
         self.month = month
         self.currency = currency
         self.budgetMinor = budgetMinor
@@ -169,7 +170,6 @@ public struct Summary: Codable, Sendable, Hashable {
         self.todayPerUsd = todayPerUsd
         self.byCategory = byCategory
         self.uncategorisedCount = uncategorisedCount
-        self.openGapCount = openGapCount
         self.lastAlertAt = lastAlertAt
         self.trackedBanks = trackedBanks
     }
@@ -177,36 +177,6 @@ public struct Summary: Codable, Sendable, Hashable {
     public var spentFraction: Double? {
         guard let budgetMinor, budgetMinor > 0 else { return nil }
         return min(1, max(0, Double(spentMinor) / Double(budgetMinor)))
-    }
-}
-
-public struct Gap: Codable, Sendable, Hashable, Identifiable {
-    public var id: String
-    public var accountId: String
-    public var accountName: String
-    public var bank: Bank
-    public var fromAt: String
-    public var toAt: String
-    public var expectedBalanceMinor: Int
-    public var actualBalanceMinor: Int
-    public var differenceMinor: Int
-    public var currency: Currency
-    public var status: GapStatus
-    public var createdAt: String
-
-    public init(id: String, accountId: String, accountName: String, bank: Bank, fromAt: String, toAt: String, expectedBalanceMinor: Int, actualBalanceMinor: Int, differenceMinor: Int, currency: Currency, status: GapStatus, createdAt: String) {
-        self.id = id
-        self.accountId = accountId
-        self.accountName = accountName
-        self.bank = bank
-        self.fromAt = fromAt
-        self.toAt = toAt
-        self.expectedBalanceMinor = expectedBalanceMinor
-        self.actualBalanceMinor = actualBalanceMinor
-        self.differenceMinor = differenceMinor
-        self.currency = currency
-        self.status = status
-        self.createdAt = createdAt
     }
 }
 

@@ -56,14 +56,9 @@ struct SummaryView: View {
     }
 
     @ViewBuilder private func notices(_ summary: Summary) -> some View {
-        if summary.uncategorisedCount > 0 || summary.openGapCount > 0 {
+        if summary.uncategorisedCount > 0 {
             HStack(spacing: 8) {
-                if summary.uncategorisedCount > 0 {
-                    TagPill(text: "Needs a category · \(summary.uncategorisedCount)", tint: WS.accentText, background: WS.accent.opacity(0.12))
-                }
-                if summary.openGapCount > 0 {
-                    TagPill(text: "\(summary.openGapCount) balance gap\(summary.openGapCount == 1 ? "" : "s") open", tint: WS.ink)
-                }
+                TagPill(text: "Needs a category · \(summary.uncategorisedCount)", tint: WS.accentText, background: WS.accent.opacity(0.12))
                 Spacer()
             }
         }

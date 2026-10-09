@@ -30,6 +30,7 @@ struct TransactionDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                if transaction.unsureTransfer { unsureSection }
                 facts
                 categorySection
                 descriptionSection
@@ -99,7 +100,7 @@ struct TransactionDetailView: View {
             }
             if transaction.isFee {
                 Hairline()
-                FactRow(label: "Note", value: "Added by WebSpend from a balance check.")
+                FactRow(label: "Note", value: "Added by WebSpend when pairing a conversion.")
             }
         }
         .wsCard(padding: 14)
@@ -153,6 +154,23 @@ struct TransactionDetailView: View {
                     if !focused { Task { await saveDescription() } }
                 }
             Text("Kept separate from the bank's own wording.").font(.ws(12)).foregroundStyle(WS.muted)
+        }
+        .wsCard()
+    }
+
+    private var unsureSection: some View {
+        let kept = transaction.type == .income ? "income" : "an expense"
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionTitle("Is this a transfer to yourself?")
+            Text("The other account ends in the same digits as one of yours. It counts as \(kept) until you say.")
+                .font(.ws(13)).foregroundStyle(WS.muted)
+            HStack(spacing: 16) {
+                Button("Yes, it is mine") { Task { await save(UpdateTransactionRequest(type: .transfer)) } }
+                    .buttonStyle(LinkButtonStyle())
+                Button("No, keep as \(kept)") { Task { await save(UpdateTransactionRequest(type: transaction.type)) } }
+                    .buttonStyle(LinkButtonStyle())
+                    .tint(WS.muted)
+            }
         }
         .wsCard()
     }

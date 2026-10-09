@@ -24,8 +24,6 @@ public protocol WebSpendAPI: Sendable {
     func updateAccount(id: String, _ request: UpdateAccountRequest) async throws -> Account
     func deleteAccount(id: String) async throws
 
-    func gaps(status: GapStatus?) async throws -> [Gap]
-    func updateGap(id: String, _ request: UpdateGapRequest) async throws -> Gap
     func failedAlerts() async throws -> [RawAlert]
     func rates(day: String?) async throws -> [FxRate]
     func refreshRates() async throws -> [FxRate]
@@ -39,6 +37,5 @@ public protocol WebSpendAPI: Sendable {
 
 public extension WebSpendAPI {
     func summary() async throws -> Summary { try await summary(month: nil) }
-    func gaps() async throws -> [Gap] { try await gaps(status: .open) }
     func rates() async throws -> [FxRate] { try await rates(day: nil) }
 }

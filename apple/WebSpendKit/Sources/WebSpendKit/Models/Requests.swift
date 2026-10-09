@@ -82,8 +82,9 @@ public struct TransactionQuery: Sendable, Hashable {
     public var type: TransactionType?
     public var limit: Int?
     public var before: String?
+    public var unsure: Bool
 
-    public init(month: String? = nil, q: String? = nil, categoryId: String? = nil, accountId: String? = nil, type: TransactionType? = nil, limit: Int? = nil, before: String? = nil) {
+    public init(month: String? = nil, q: String? = nil, categoryId: String? = nil, accountId: String? = nil, type: TransactionType? = nil, limit: Int? = nil, before: String? = nil, unsure: Bool = false) {
         self.month = month
         self.q = q
         self.categoryId = categoryId
@@ -91,6 +92,7 @@ public struct TransactionQuery: Sendable, Hashable {
         self.type = type
         self.limit = limit
         self.before = before
+        self.unsure = unsure
     }
 
     public static let uncategorised = "none"
@@ -104,6 +106,7 @@ public struct TransactionQuery: Sendable, Hashable {
         if let type { items.append(.init(name: "type", value: type.rawValue)) }
         if let limit { items.append(.init(name: "limit", value: String(limit))) }
         if let before { items.append(.init(name: "before", value: before)) }
+        if unsure { items.append(.init(name: "unsure", value: "true")) }
         return items
     }
 }
@@ -262,22 +265,6 @@ public struct AccountResponse: Codable, Sendable, Hashable {
     public init(account: Account) { self.account = account }
 }
 
-public struct GapsResponse: Codable, Sendable, Hashable {
-    public var gaps: [Gap]
-    public init(gaps: [Gap]) { self.gaps = gaps }
-}
-
-public struct UpdateGapRequest: Codable, Sendable, Hashable {
-    public enum Status: String, Codable, Sendable { case open, dismissed }
-    public var status: Status
-    public init(status: Status) { self.status = status }
-}
-
-public struct GapResponse: Codable, Sendable, Hashable {
-    public var gap: Gap
-    public init(gap: Gap) { self.gap = gap }
-}
-
 public struct AlertsResponse: Codable, Sendable, Hashable {
     public var alerts: [RawAlert]
     public init(alerts: [RawAlert]) { self.alerts = alerts }
@@ -332,14 +319,12 @@ public struct ImportCommitRequest: Codable, Sendable, Hashable {
     public var format: ImportFormat
     public var content: String
     public var mapping: ImportMapping
-    public var gapId: String?
 
-    public init(accountId: String, format: ImportFormat, content: String, mapping: ImportMapping, gapId: String? = nil) {
+    public init(accountId: String, format: ImportFormat, content: String, mapping: ImportMapping) {
         self.accountId = accountId
         self.format = format
         self.content = content
         self.mapping = mapping
-        self.gapId = gapId
     }
 }
 

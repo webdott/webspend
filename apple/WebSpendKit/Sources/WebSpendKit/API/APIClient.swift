@@ -144,19 +144,7 @@ public actor APIClient: WebSpendAPI {
         try await sendIgnoringBody("DELETE", "/api/accounts/\(encoded(id))")
     }
 
-    // MARK: Gaps, alerts, rates
-
-    public func gaps(status: GapStatus?) async throws -> [Gap] {
-        var items: [URLQueryItem] = []
-        if let status { items.append(.init(name: "status", value: status.rawValue)) }
-        let response: GapsResponse = try await get("/api/gaps", query: items)
-        return response.gaps
-    }
-
-    public func updateGap(id: String, _ request: UpdateGapRequest) async throws -> Gap {
-        let response: GapResponse = try await send("PATCH", "/api/gaps/\(encoded(id))", body: request)
-        return response.gap
-    }
+    // MARK: Alerts, rates
 
     public func failedAlerts() async throws -> [RawAlert] {
         let response: AlertsResponse = try await get("/api/alerts", query: [.init(name: "status", value: "failed")])

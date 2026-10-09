@@ -13,7 +13,10 @@ struct AccountsView: View {
                 #endif
                 trackedBanks
                 myAccounts
-                openGaps
+                #if os(iOS)
+                NavigationLink { ImportView() } label: { Text("Import a statement") }
+                    .buttonStyle(LinkButtonStyle())
+                #endif
             }
             .padding(WSLayout.pagePadding)
             .frame(maxWidth: 720)
@@ -23,14 +26,10 @@ struct AccountsView: View {
         .navigationTitle("Accounts")
         .refreshable {
             await store.loadAccounts()
-            await store.loadGaps()
         }
         .sheet(isPresented: $showAdd) {
             AddAccountSheet().environment(store)
         }
-        #if os(iOS)
-        .navigationDestination(for: Gap.self) { gap in ImportView(gap: gap) }
-        #endif
     }
 
     // MARK: Tracked banks
@@ -94,26 +93,6 @@ struct AccountsView: View {
             }
         }
     }
-
-    // MARK: Gaps
-
-    @ViewBuilder private var openGaps: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitle("Open gaps")
-            switch store.gaps {
-            case .idle, .loading:
-                LoadingState().wsCard()
-            case let .failed(message):
-                ErrorState(message: message) { Task { await store.loadGaps() } }.wsCard()
-            case let .loaded(gaps):
-                if gaps.isEmpty {
-                    EmptyState(title: "Balances add up", message: "When an alert is missed, the gap shows here with an option to import a statement.", systemImage: "checkmark.circle").wsCard()
-                } else {
-                    ForEach(gaps) { gap in GapCard(gap: gap) }
-                }
-            }
-        }
-    }
 }
 
 struct BankCard: View {
@@ -161,38 +140,6 @@ struct BankCard: View {
                         Text("The first alert supplies the opening balance.").font(.ws(12)).foregroundStyle(WS.muted)
                     }
                 }
-            }
-        }
-        .wsCard()
-    }
-}
-
-struct GapCard: View {
-    @Environment(AppStore.self) private var store
-    let gap: Gap
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(gap.accountName).font(.ws(15, .semibold)).foregroundStyle(WS.ink)
-                Spacer()
-                Text(Money.formatSigned(gap.differenceMinor, gap.currency, gap.differenceMinor < 0 ? .expense : .income))
-                    .font(.wsMono(14)).foregroundStyle(WS.ink)
-            }
-            Text("\(Dates.short(iso: gap.fromAt)) – \(Dates.short(iso: gap.toAt)) · expected \(Money.formatMinor(gap.expectedBalanceMinor, gap.currency)), saw \(Money.formatMinor(gap.actualBalanceMinor, gap.currency))")
-                .font(.ws(13)).foregroundStyle(WS.muted)
-            HStack(spacing: 16) {
-                #if os(iOS)
-                NavigationLink(value: gap) { Text("Import a statement") }.buttonStyle(LinkButtonStyle())
-                #else
-                Button("Import a statement") {
-                    store.pendingImportGap = gap
-                    store.macSection = .import
-                }.buttonStyle(LinkButtonStyle())
-                #endif
-                Button("Dismiss") { Task { await store.dismissGap(id: gap.id) } }
-                    .buttonStyle(LinkButtonStyle())
-                    .tint(WS.muted)
             }
         }
         .wsCard()

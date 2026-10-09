@@ -10,7 +10,6 @@ public actor MockAPI: WebSpendAPI {
     private var categoriesStore = Fixtures.categories
     private var accountsStore = Fixtures.accounts
     private var transactionsStore = Fixtures.transactions
-    private var gapsStore = Fixtures.gaps
     private var payeeRules: [String: String] = [:]
     private let latency: Duration
 
@@ -56,7 +55,6 @@ public actor MockAPI: WebSpendAPI {
         summary.leftMinor = user.monthlyBudgetMinor.map { $0 - summary.spentMinor }
         summary.leftUsdMinor = summary.leftMinor.map { Money.toUsdMinor($0, perUsd: Fixtures.rate) }
         summary.todayPerUsd = user.defaultCurrency == .usd ? nil : Fixtures.rate
-        summary.openGapCount = gapsStore.filter { $0.status == .open }.count
         summary.uncategorisedCount = transactionsStore.filter { $0.needsCategory && $0.occurredAt.hasPrefix(month) }.count
         if month != Fixtures.currentMonth {
             summary.spentMinor = 0
@@ -88,6 +86,7 @@ public actor MockAPI: WebSpendAPI {
         }
         if let accountId = query.accountId { items = items.filter { $0.accountId == accountId } }
         if let type = query.type { items = items.filter { $0.type == type } }
+        if query.unsure { items = items.filter { $0.unsureTransfer } }
         if let before = query.before { items = items.filter { $0.occurredAt < before } }
         let limit = query.limit ?? 100
         let page = Array(items.prefix(limit))
@@ -120,6 +119,7 @@ public actor MockAPI: WebSpendAPI {
         }
         if let type = request.type {
             t.type = type
+            t.unsureTransfer = false
             if let group = t.transferGroupId {
                 for i in transactionsStore.indices where transactionsStore[i].transferGroupId == group && transactionsStore[i].id != id {
                     transactionsStore[i].type = type
@@ -248,22 +248,7 @@ public actor MockAPI: WebSpendAPI {
         accountsStore.removeAll { $0.id == id }
     }
 
-    // MARK: Gaps, alerts, rates
-
-    public func gaps(status: GapStatus?) async throws -> [Gap] {
-        await pause()
-        guard let status else { return gapsStore }
-        return gapsStore.filter { $0.status == status }
-    }
-
-    public func updateGap(id: String, _ request: UpdateGapRequest) async throws -> Gap {
-        await pause()
-        guard let index = gapsStore.firstIndex(where: { $0.id == id }) else {
-            throw Failure(message: "No gap with id \(id).")
-        }
-        gapsStore[index].status = request.status == .open ? .open : .dismissed
-        return gapsStore[index]
-    }
+    // MARK: Alerts, rates
 
     public func failedAlerts() async throws -> [RawAlert] { Fixtures.failedAlerts }
 
@@ -316,9 +301,6 @@ public actor MockAPI: WebSpendAPI {
         let rows = parseRows(ImportPreviewRequest(accountId: request.accountId, format: request.format, content: request.content))
         let count = max(0, rows.count - 1)
         let skipped = min(count, 1)
-        if let gapId = request.gapId, let index = gapsStore.firstIndex(where: { $0.id == gapId }) {
-            gapsStore[index].status = .filled
-        }
         return ImportCommitResponse(importId: "imp_\(UUID().uuidString.prefix(8))", added: count - skipped, skipped: skipped, errors: [])
     }
 
