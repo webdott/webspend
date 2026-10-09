@@ -5,21 +5,21 @@
 #   ./scripts/commit-changes.sh 2 3       run only phases 2 and 3
 #   ./scripts/commit-changes.sh --list    print the phases and their commit titles
 #
-# This round: the demo API (MockAPI) converts US dollar entries into the default currency and
-# honours a Category column on import, with a test for the import rule. CLAUDE.md is untracked
-# and no phase touches it. Safe to re-run: a phase with nothing new to commit is skipped.
+# This round: a script that builds the Mac app into a DMG, and one that archives the iPhone app
+# under the personal team and uploads it to TestFlight. CLAUDE.md is untracked and no phase
+# touches it. Safe to re-run: a phase with nothing new to commit is skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TITLES=(
-  "fix(apple): demo API converts dollar entries and imports a Category column"
+  "chore: scripts to build the Mac DMG and ship the iPhone app to TestFlight"
   "chore: update the commit script"
 )
 
 paths_for() {
   case "$1" in
-    1) echo "apple" ;;
-    2) echo "scripts" ;;
+    1) echo "scripts/make-dmg.sh scripts/ship-ios.sh apple/ExportOptions.plist" ;;
+    2) echo "scripts/commit-changes.sh" ;;
     *) echo "Unknown phase: $1 (there are ${#TITLES[@]})" >&2; exit 1 ;;
   esac
 }
