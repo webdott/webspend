@@ -65,9 +65,8 @@ payment was for, so you choose from here."; "New category" input + Add; list wit
 footer row "Needs a category · N to sort".
 
 **Accounts** — one card per tracked bank showing status (Off / Waiting for first alert / Tracking since
-date), the checklist "1. Turn on email alerts in the bank's app 2. Switch tracking on here", last
-balance; "My accounts" list of own account numbers with add/remove; open gaps with an "Import a
-statement" link.
+date), the checklist "1. Turn on email alerts in the bank's app 2. Switch tracking on here";
+"My accounts" list of own account numbers with add/remove.
 
 **Import** — pick account, drop or choose a CSV/JSON file, preview table, column → field mapping,
 day/month order prompt when ambiguous, result "Added N · Skipped M".

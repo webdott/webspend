@@ -110,8 +110,13 @@ export type Transaction = {
   bankReference: string | null;
   /** Shared by both legs of a transfer to self. */
   transferGroupId: string | null;
-  /** True for a fee or exchange loss WebSpend added itself from a balance check or pairing. */
+  /** True for an exchange loss WebSpend added itself when pairing a conversion. */
   isFee: boolean;
+  /**
+   * True when the other account matches one of the user's own by its last digits only, so this
+   * may be a transfer to self. Counted as its `type` until the user re-marks it, which clears it.
+   */
+  unsureTransfer: boolean;
   createdAt: string;
 };
 
@@ -139,25 +144,8 @@ export type Summary = {
   todayPerUsd: number | null;
   byCategory: CategoryTotal[];
   uncategorisedCount: number;
-  openGapCount: number;
   lastAlertAt: string | null;
   trackedBanks: Bank[];
-};
-
-export type Gap = {
-  id: string;
-  accountId: string;
-  accountName: string;
-  bank: Bank;
-  fromAt: string;
-  toAt: string;
-  expectedBalanceMinor: number;
-  actualBalanceMinor: number;
-  /** `actual - expected`. Negative means money left unseen. */
-  differenceMinor: number;
-  currency: Currency;
-  status: 'open' | 'filled' | 'dismissed';
-  createdAt: string;
 };
 
 export type RawAlertStatus =
@@ -225,6 +213,7 @@ export type SummaryResponse = Summary;
  *   &categoryId=id      one category, or `none` for uncategorised
  *   &accountId=id
  *   &type=expense|income|transfer
+ *   &unsure=true        only transactions tagged `unsureTransfer`
  *   &limit=100&before=<occurredAt of the last item seen>
  * Sorted newest first. Clients group by day.
  */
@@ -239,7 +228,10 @@ export type UpdateTransactionRequest = {
   /** Save `categoryId` for this payee so future alerts from them are categorised. */
   rememberForPayee?: boolean;
   userDescription?: string | null;
-  /** Re-mark the transaction. Moving to or from `transfer` also updates its paired leg. */
+  /**
+   * Re-mark the transaction. Moving to or from `transfer` also updates its paired leg. Sending
+   * the type it already has confirms it and clears `unsureTransfer`.
+   */
   type?: TransactionType;
 };
 export type UpdateTransactionResponse = { transaction: Transaction };
@@ -287,12 +279,6 @@ export type UpdateAccountRequest = {
 };
 export type AccountResponse = { account: Account };
 /** DELETE /api/accounts/:id → 204. Refused (409) while it has transactions. */
-
-/** GET /api/gaps?status=open */
-export type GapsResponse = { gaps: Gap[] };
-/** PATCH /api/gaps/:id */
-export type UpdateGapRequest = { status: 'open' | 'dismissed' };
-export type GapResponse = { gap: Gap };
 
 /** GET /api/alerts?status=failed  — alerts that could not be turned into transactions */
 export type AlertsResponse = { alerts: RawAlert[] };
@@ -356,8 +342,6 @@ export type ImportCommitRequest = {
   format: ImportFormat;
   content: string;
   mapping: ImportMapping;
-  /** Marks this gap as filled when the import covers its window. */
-  gapId?: string | null;
 };
 export type ImportCommitResponse = {
   importId: string;

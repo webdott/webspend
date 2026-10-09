@@ -62,8 +62,6 @@ export const updateAccountSchema = z
   })
   .partial();
 
-export const updateGapSchema = z.object({ status: z.enum(['open', 'dismissed']) });
-
 export const importFormatSchema = z.enum(['csv', 'json']);
 export const importMappingSchema = z.object({
   columns: z.record(z.string(), z.enum(IMPORT_FIELDS as [string, ...string[]])),
@@ -77,7 +75,6 @@ export const importPreviewSchema = z.object({
 });
 export const importCommitSchema = importPreviewSchema.extend({
   mapping: importMappingSchema,
-  gapId: z.string().nullable().optional(),
 });
 
 export const intakeEmailSchema = z.object({
