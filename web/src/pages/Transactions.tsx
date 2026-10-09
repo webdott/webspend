@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import type { TransactionsQuery } from '../api/client.ts';
 import { useCategories, useTransactions } from '../api/hooks.ts';
 import { AddTransactionButton } from '../components/AddTransaction.tsx';
+import { ExportButton } from '../components/ExportDialog.tsx';
 import { MonthPicker } from '../components/MonthPicker.tsx';
 import { TransactionRow } from '../components/TransactionRow.tsx';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui.tsx';
@@ -79,7 +80,10 @@ export function Transactions() {
     <div className="stack">
       <div className="page-head">
         <h1 className="page-title">Transactions</h1>
-        <AddTransactionButton />
+        <div className="row">
+          <ExportButton month={month && isValidMonth(month) ? month : null} />
+          <AddTransactionButton />
+        </div>
       </div>
 
       <div className="stack" style={{ gap: 12 }}>

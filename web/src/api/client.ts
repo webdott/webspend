@@ -5,6 +5,8 @@
  *   `VITE_API_URL` overrides the origin for production builds.
  * - `VITE_MOCK=1` swaps every request for the in-memory fake in `./mock.ts`.
  */
+import { dayOf } from '../lib/dates.ts';
+import { exportFilename, exportPath } from '../lib/export.ts';
 import type {
   AccountResponse,
   AccountsResponse,
@@ -34,6 +36,7 @@ import type {
   UpdateSettingsResponse,
   UpdateTransactionRequest,
   UpdateTransactionResponse,
+  ExportQuery,
 } from '@webspend/shared';
 
 export const MOCK = import.meta.env.VITE_MOCK === '1';
@@ -153,6 +156,35 @@ export const api = {
     request<ImportPreviewResponse>('POST', '/api/imports/preview', body),
   importCommit: (body: ImportCommitRequest) =>
     request<ImportCommitResponse>('POST', '/api/imports', body),
+
+  /**
+   * Where to download an export from. The real server builds the file and names it through
+   * `Content-Disposition`; the session cookie goes along with the navigation. The mock builds a
+   * CSV in the page and hands back an object URL to release after the click.
+   */
+  exportFile: async (query: ExportQuery): Promise<ExportFile> => {
+    const range = exportRange(query);
+    const filename = exportFilename(query, range);
+    if (MOCK) {
+      const { mockExportCsv } = await import('./mock.ts');
+      if (query.format !== 'csv') {
+        throw new ApiError(501, 'mock_unsupported', 'PDF export needs the real server.');
+      }
+      const url = URL.createObjectURL(
+        new Blob([mockExportCsv({ ...query, ...range })], { type: 'text/csv;charset=utf-8' }),
+      );
+      return { url, filename, release: () => URL.revokeObjectURL(url) };
+    }
+    return { url: BASE + exportPath({ ...query, ...range }), filename };
+  },
 };
+
+export type ExportFile = { url: string; filename: string; release?: () => void };
+
+/** `to` defaults to today and `from` to the first of that month, as the server does. */
+function exportRange(query: ExportQuery): { from: string; to: string } {
+  const to = query.to ?? dayOf(new Date());
+  return { from: query.from ?? `${to.slice(0, 7)}-01`, to };
+}
 
 export type Api = typeof api;

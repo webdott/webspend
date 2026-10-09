@@ -23,6 +23,7 @@ import type {
   TransactionType,
   User,
   CategoryTotal,
+  ExportQuery,
 } from '@webspend/shared';
 import { BANK_LABELS, NO_ACCOUNT, toUsdMinor } from '@webspend/shared';
 import { ApiError } from './client.ts';
@@ -837,3 +838,63 @@ function isAmbiguousDate(value: string): boolean {
 }
 
 export type { ImportField, ImportMapping, DateOrder };
+
+/** The CSV the server would build, from the same in-memory ledger, for mock mode. */
+export function mockExportCsv(query: ExportQuery): string {
+  const { from, to } = query;
+  let list = [...transactions]
+    .filter((t) => {
+      const day = dayOf(t.occurredAt);
+      return (!from || day >= from) && (!to || day <= to);
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  if (query.accountId) list = list.filter((t) => t.accountId === query.accountId);
+  if (query.type) list = list.filter((t) => t.type === query.type);
+  const rows = list.map(view);
+  const header = [
+    'Date',
+    'Time',
+    'Type',
+    'Title',
+    'Description',
+    'Category',
+    'Account',
+    'Bank',
+    'Amount',
+    'Currency',
+    `Amount (${user.defaultCurrency})`,
+    'USD equivalent',
+    'Counterparty',
+    'Reference',
+    'Source',
+  ];
+  const decimal = (minor: number | null, type: TransactionType) =>
+    minor === null ? '' : `${type === 'expense' ? '-' : ''}${(Math.abs(minor) / 100).toFixed(2)}`;
+  const cell = (value: string) =>
+    /[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+  const lines = [
+    header,
+    ...rows.map((t) => [
+      dayOf(t.occurredAt),
+      new Date(t.occurredAt).toTimeString().slice(0, 5),
+      t.type === 'transfer' ? 'Transfer to self' : t.type === 'expense' ? 'Expense' : 'Income',
+      t.title,
+      t.userDescription ?? '',
+      t.categoryName ?? '',
+      t.accountName,
+      BANK_LABELS[t.bank],
+      decimal(t.amountMinor, t.type),
+      t.currency,
+      decimal(t.defaultMinor, t.type),
+      decimal(t.usdMinor, t.type),
+      t.counterpartyName ?? '',
+      t.bankReference ?? '',
+      t.source === 'alert'
+        ? 'Bank alert'
+        : t.source === 'import'
+          ? 'Statement import'
+          : 'Entered by hand',
+    ]),
+  ];
+  return `\uFEFF${lines.map((cells) => cells.map(cell).join(',')).join('\r\n')}\r\n`;
+}
