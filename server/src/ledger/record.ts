@@ -67,6 +67,8 @@ export type ImportedRow = {
   counterpartyName: string | null;
   bankDescription: string | null;
   bankReference: string | null;
+  /** From the statement's own category column. Wins over the payee's remembered category. */
+  categoryId?: string | null;
 };
 
 type PreparedRow = {
@@ -179,7 +181,7 @@ export async function recordImportedRows(
         },
         direction: row.direction,
         fxPerUsd: rates ? rateOnOrBefore(rates, lagosDay(row.occurredAt)) : 1,
-        categoryId: payeeKey ? (remembered.get(payeeKey) ?? null) : null,
+        categoryId: row.categoryId ?? (payeeKey ? (remembered.get(payeeKey) ?? null) : null),
         payeeKey,
       };
     });

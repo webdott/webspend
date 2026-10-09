@@ -6,6 +6,7 @@ import {
 } from '@webspend/shared';
 import type { Db } from '../db/index.ts';
 import { getAccount } from '../ledger/accounts.ts';
+import { ensureCategories } from '../ledger/categories.ts';
 import { InvalidRequestError } from '../ledger/errors.ts';
 import { type RecordOptions, recordImportedRows } from '../ledger/record.ts';
 import { lagosDay } from '../ledger/time.ts';
@@ -20,6 +21,7 @@ type MappedRow = {
   description: string | null;
   counterparty: string | null;
   reference: string | null;
+  category: string | null;
 };
 
 export async function commitImport(
@@ -53,10 +55,29 @@ export async function commitImport(
     }
   }
 
+  const categories = await ensureCategories(
+    db,
+    user.id,
+    mapped.flatMap((row) => (row.category ? [row.category] : [])),
+  );
+  const categoryIdOf = (row: MappedRow) =>
+    row.category ? (categories.ids.get(row.category.toLowerCase()) ?? null) : null;
+
   const ledger = await ledgerEntries(db, account.id, mapped);
-  const fresh = mapped.filter((row) => !claimMatch(ledger, row));
+  const fresh: MappedRow[] = [];
+  const backfill = new Map<string, string>();
+  for (const row of mapped) {
+    const match = claimMatch(ledger, row);
+    if (!match) {
+      fresh.push(row);
+      continue;
+    }
+    const categoryId = categoryIdOf(row);
+    if (match.categoryId === null && categoryId) backfill.set(match.id, categoryId);
+  }
   const added = fresh.length;
   const skipped = mapped.length - added;
+  const categorised = await fillMissingCategories(db, user.id, backfill);
   await recordImportedRows(
     db,
     user,
@@ -68,6 +89,7 @@ export async function commitImport(
       counterpartyName: row.counterparty,
       bankDescription: row.description,
       bankReference: row.reference,
+      categoryId: categoryIdOf(row),
     })),
     importId,
     options,
@@ -79,7 +101,7 @@ export async function commitImport(
     skipped,
   ]);
 
-  return { importId, added, skipped, errors };
+  return { importId, added, skipped, categoriesCreated: categories.created, categorised, errors };
 }
 
 type Fields = Partial<Record<string, string>>;
@@ -129,6 +151,7 @@ function mapRow(
     description: value('description') || null,
     counterparty: value('counterparty') || null,
     reference: value('reference') || null,
+    category: value('category').replace(/\s+/g, ' ').slice(0, 60).trim() || null,
   };
 }
 
@@ -140,7 +163,30 @@ function readAmount(text: string): number | null {
   return minor;
 }
 
-type LedgerEntry = { reference: string | null; description: string; claimed: boolean };
+type LedgerEntry = {
+  id: string;
+  categoryId: string | null;
+  reference: string | null;
+  description: string;
+  claimed: boolean;
+};
+
+/** Gives each listed transaction its category, leaving alone any that gained one meanwhile. */
+async function fillMissingCategories(
+  db: Db,
+  userId: string,
+  categoryByTransaction: Map<string, string>,
+): Promise<number> {
+  if (categoryByTransaction.size === 0) return 0;
+  const updated = await db.query(
+    `update transactions t set category_id = v.category_id
+       from unnest($2::uuid[], $3::uuid[]) as v(id, category_id)
+      where t.user_id = $1 and t.id = v.id and t.category_id is null
+      returning t.id`,
+    [userId, [...categoryByTransaction.keys()], [...categoryByTransaction.values()]],
+  );
+  return updated.length;
+}
 
 /** The account's existing transactions on the days the import covers, keyed by day and amount. */
 async function ledgerEntries(
@@ -152,13 +198,15 @@ async function ledgerEntries(
   if (rows.length === 0) return entries;
   const days = rows.map((row) => lagosDay(row.occurredAt)).sort();
   const existing = await db.query<{
+    id: string;
+    category_id: string | null;
     day: string;
     amount_minor: number;
     bank_reference: string | null;
     bank_description: string | null;
   }>(
-    `select ((occurred_at + interval '1 hour')::date)::text as day, amount_minor, bank_reference,
-       bank_description
+    `select id, category_id, ((occurred_at + interval '1 hour')::date)::text as day, amount_minor,
+       bank_reference, bank_description
        from transactions
       where account_id = $1::uuid and not is_fee
         and (occurred_at + interval '1 hour')::date between $2::date and $3::date`,
@@ -167,6 +215,8 @@ async function ledgerEntries(
   for (const row of existing) {
     const key = `${row.day}|${Number(row.amount_minor)}`;
     const entry = {
+      id: row.id,
+      categoryId: row.category_id,
       reference: row.bank_reference,
       description: comparable(row.bank_description),
       claimed: false,
@@ -188,7 +238,7 @@ async function ledgerEntries(
  * was before this import. So two identical rows in one statement are two transactions the first
  * time, and both are skipped when the same statement is imported again.
  */
-function claimMatch(ledger: Map<string, LedgerEntry[]>, row: MappedRow): boolean {
+function claimMatch(ledger: Map<string, LedgerEntry[]>, row: MappedRow): LedgerEntry | null {
   const description = comparable(row.description);
   const candidates = ledger.get(`${lagosDay(row.occurredAt)}|${row.amountMinor}`) ?? [];
   const match = candidates.find((entry) => {
@@ -201,9 +251,9 @@ function claimMatch(ledger: Map<string, LedgerEntry[]>, row: MappedRow): boolean
       (entry.description.includes(description) || description.includes(entry.description))
     );
   });
-  if (!match) return false;
+  if (!match) return null;
   match.claimed = true;
-  return true;
+  return match;
 }
 
 function comparable(description: string | null): string {

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import type { ImportCommitRequest } from '@webspend/shared';
 import { test } from 'node:test';
+import { listCategories } from '../ledger/categories.ts';
+import { monthSummary } from '../ledger/summary.ts';
 import { fixture, sample, SENDERS } from '../ledger/testing.ts';
 import { listTransactions } from '../ledger/transactions.ts';
 import { parseCsv } from './csv.ts';
@@ -225,4 +227,54 @@ test('a JSON import with a single signed amount column', async () => {
   assert.equal(paystack.amountMinor, 241_300);
   assert.equal(paystack.title, 'Paystack Payment Limited');
   assert.equal(transactions.find((t) => t.bankReference === 'A2')!.type, 'income');
+});
+
+test('a category column creates the missing categories, files the rows and carries the month over', async () => {
+  const { db, user, accounts } = await fixture();
+  const gtbank = accounts.gtbank!;
+  const content = `Date, Category, Amount, Note
+09/10/2026, Eating Out, -11000, 
+09/10/2026, Shopping, -25000, Gym shirt
+07/10/2026, Miscellaneous , -2000, Printing of passport
+08/10/2026, eating out, -10750, 
+20/09/2026, Salary, 100000, September pay
+21/09/2026, Shopping, -30000, Shoes
+`;
+  const preview = previewImport({ accountId: gtbank.id, format: 'csv', content });
+  assert.equal(preview.suggestedMapping.columns.Category, 'category');
+  const request: ImportCommitRequest = {
+    accountId: gtbank.id,
+    format: 'csv',
+    content,
+    mapping: preview.suggestedMapping,
+  };
+
+  const first = await commitImport(db, user, request);
+  assert.deepEqual(
+    [first.added, first.skipped, first.categoriesCreated, first.errors.length],
+    [6, 0, 4, 0],
+  );
+  const names = (await listCategories(db, user.id)).map((category) => category.name);
+  for (const name of ['Eating Out', 'Shopping', 'Miscellaneous', 'Salary']) {
+    assert.ok(names.includes(name), name);
+  }
+  const { transactions } = await listTransactions(db, user, { month: '2026-10' });
+  assert.deepEqual(transactions.map((t) => `${t.amountMinor / 100} ${t.categoryName}`).sort(), [
+    '10750 Eating Out',
+    '11000 Eating Out',
+    '2000 Miscellaneous',
+    '25000 Shopping',
+  ]);
+
+  await db.query('update transactions set category_id = null where user_id = $1', [user.id]);
+  const again = await commitImport(db, user, request);
+  assert.deepEqual(
+    [again.added, again.skipped, again.categoriesCreated, again.categorised],
+    [0, 6, 0, 6],
+  );
+
+  const october = await monthSummary(db, user, '2026-10');
+  assert.equal(october.carryOverMinor, 7_000_000);
+  assert.equal(october.availableMinor, 7_000_000 - 4_875_000);
+  assert.equal((await monthSummary(db, user, '2026-09')).carryOverMinor, 0);
 });

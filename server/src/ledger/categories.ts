@@ -46,6 +46,33 @@ export async function ensureCategory(db: Db, userId: string, name: string): Prom
   return createCategory(db, userId, name);
 }
 
+/**
+ * Makes sure every name is on the user's list, matching existing ones whatever their case.
+ * A new name keeps the spelling it is first seen with. `ids` is keyed by the lower-cased name.
+ */
+export async function ensureCategories(
+  db: Db,
+  userId: string,
+  names: string[],
+): Promise<{ ids: Map<string, string>; created: number }> {
+  const ids = new Map<string, string>();
+  const wanted = new Map<string, string>();
+  for (const name of names) {
+    if (!wanted.has(name.toLowerCase())) wanted.set(name.toLowerCase(), name);
+  }
+  if (wanted.size === 0) return { ids, created: 0 };
+  for (const category of await listCategories(db, userId)) {
+    ids.set(category.name.toLowerCase(), category.id);
+  }
+  let created = 0;
+  for (const [key, name] of wanted) {
+    if (ids.has(key)) continue;
+    ids.set(key, (await createCategory(db, userId, name)).id);
+    created += 1;
+  }
+  return { ids, created };
+}
+
 export async function updateCategory(
   db: Db,
   userId: string,

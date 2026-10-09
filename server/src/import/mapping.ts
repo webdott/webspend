@@ -19,6 +19,7 @@ const PATTERNS: [ImportField, RegExp][] = [
     'counterparty',
     /counter[\s_-]*part|payee|beneficiary|recipient|sender|merchant|other[\s_-]*party/i,
   ],
+  ['category', /categor/i],
   ['reference', /\bref(erence)?\b|txn[\s_-]*id|transaction[\s_-]*(id|no)|document/i],
   ['description', /desc|narration|details|remarks?|memo|note|particulars/i],
 ];
