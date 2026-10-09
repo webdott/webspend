@@ -175,6 +175,19 @@ public actor APIClient: WebSpendAPI {
 
     // MARK: Intake
 
+    public func export(_ query: ExportQuery) async throws -> ExportedFile {
+        let (data, response) = try await perform("GET", "/api/exports", query: query.queryItems, body: nil, headers: ["Accept": "*/*"])
+        let disposition = response.value(forHTTPHeaderField: "Content-Disposition") ?? ""
+        let named = disposition.firstMatch(of: /filename="([^"]+)"/).map { String($0.1) }
+        let today = ISO8601.string(Date()).prefix(10)
+        let fallback = query.filename(from: query.from ?? "\(today.prefix(7))-01", to: query.to ?? String(today))
+        return ExportedFile(
+            filename: named ?? fallback,
+            contentType: response.value(forHTTPHeaderField: "Content-Type") ?? query.format.contentType,
+            data: data
+        )
+    }
+
     public func intakeEmail(_ request: IntakeEmailRequest, secret: String) async throws -> RawAlert {
         let response: IntakeEmailResponse = try await send("POST", "/api/intake/email", body: request, headers: ["X-Intake-Secret": secret])
         return response.alert

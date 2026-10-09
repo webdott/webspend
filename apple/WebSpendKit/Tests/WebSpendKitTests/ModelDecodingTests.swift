@@ -177,6 +177,23 @@ import Testing
         #expect(fees.first?.occurredAt.hasPrefix("2026-10-05") == true)
     }
 
+    @Test func exportQueryBuildsTheRouteAndTheMockReturnsACsv() async throws {
+        let query = ExportQuery(format: .pdf, from: "2026-10-01", to: "2026-10-09", type: .expense)
+        #expect(query.queryItems.map { "\($0.name)=\($0.value ?? "")" } == ["format=pdf", "from=2026-10-01", "to=2026-10-09", "type=expense"])
+        #expect(query.filename(from: "2026-10-01", to: "2026-10-09") == "webspend-2026-10-01-to-2026-10-09.pdf")
+
+        let api = MockAPI(latency: .zero)
+        let month = Fixtures.currentMonth
+        let file = try await api.export(ExportQuery(format: .csv, from: "\(month)-01", to: nil))
+        #expect(file.filename.hasPrefix("webspend-\(month)-01-to-"))
+        let text = String(decoding: file.data, as: UTF8.self)
+        let lines = text.split(separator: "\r\n")
+        #expect(lines.first?.hasPrefix("\u{FEFF}Date,Time,Type,Title") == true)
+        #expect(lines.count > 1)
+        #expect(lines.dropFirst().allSatisfy { $0.hasPrefix(month) })
+        await #expect(throws: MockAPI.Failure.self) { try await api.export(ExportQuery(format: .pdf)) }
+    }
+
     @Test func mockAPIServesFixtures() async throws {
         let api = MockAPI(latency: .zero)
         let summary = try await api.summary(month: nil)

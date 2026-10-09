@@ -74,6 +74,9 @@ struct PhoneTabs: View {
         .sheet(isPresented: Binding(get: { store.isAddingTransaction }, set: { store.isAddingTransaction = $0 })) {
             AddTransactionSheet().environment(store)
         }
+        .sheet(isPresented: Binding(get: { store.isExporting }, set: { store.isExporting = $0 })) {
+            ExportSheet(month: store.month).environment(store)
+        }
     }
 }
 #else
@@ -119,6 +122,14 @@ struct MacShell: View {
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
+                            store.isExporting = true
+                        } label: {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                        .help("Export transactions as CSV or PDF")
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
                             store.isAddingTransaction = true
                         } label: {
                             Label("Add", systemImage: "plus")
@@ -141,6 +152,9 @@ struct MacShell: View {
         .navigationSplitViewStyle(.balanced)
         .sheet(isPresented: $store.isAddingTransaction) {
             AddTransactionSheet().environment(store)
+        }
+        .sheet(isPresented: $store.isExporting) {
+            ExportSheet(month: store.month).environment(store)
         }
     }
 

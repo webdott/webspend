@@ -21,6 +21,12 @@ struct ActivityView: View {
         .scrollContentBackground(.hidden)
         .background(WS.bg)
         .navigationTitle("Activity")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { store.isExporting = true } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                    .accessibilityLabel("Export transactions")
+            }
+        }
         .searchable(text: $store.searchText, prompt: "Search transactions")
         .onChange(of: store.searchText) { _, _ in
             searchTask?.cancel()

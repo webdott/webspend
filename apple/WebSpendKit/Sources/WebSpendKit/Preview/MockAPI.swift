@@ -422,6 +422,38 @@ public actor MockAPI: WebSpendAPI {
         return calendar.date(from: DateComponents(year: year < 100 ? 2000 + year : year, month: month, day: day, hour: 12))
     }
 
+    /// A CSV shaped like the server's, from the in-memory ledger. PDF needs the real server.
+    public func export(_ query: ExportQuery) async throws -> ExportedFile {
+        await pause()
+        guard query.format == .csv else { throw Failure(message: "PDF export needs the real server.") }
+        let today = String(ISO8601.string(Date()).prefix(10))
+        let to = query.to ?? today
+        let from = query.from ?? "\(to.prefix(7))-01"
+        var rows = transactionsStore
+            .filter { let day = String($0.occurredAt.prefix(10)); return day >= from && day <= to }
+            .sorted { $0.occurredAt > $1.occurredAt }
+        if let accountId = query.accountId { rows = rows.filter { $0.accountId == accountId } }
+        if let type = query.type { rows = rows.filter { $0.type == type } }
+        let header = ["Date", "Time", "Type", "Title", "Description", "Category", "Account", "Bank", "Amount", "Currency", "Amount (\(user.defaultCurrency.rawValue))", "USD equivalent", "Counterparty", "Reference", "Source"]
+        func decimal(_ minor: Int?, _ type: TransactionType) -> String {
+            guard let minor else { return "" }
+            return (type == .expense ? "-" : "") + String(format: "%d.%02d", abs(minor) / 100, abs(minor) % 100)
+        }
+        func cell(_ value: String) -> String {
+            value.contains(where: { $0 == "," || $0 == "\"" || $0.isNewline }) ? "\"" + value.replacingOccurrences(of: "\"", with: "\"\"") + "\"" : value
+        }
+        let lines = [header] + rows.map { t in [
+            String(t.occurredAt.prefix(10)), String(t.occurredAt.dropFirst(11).prefix(5)),
+            t.type == .transfer ? "Transfer to self" : t.type == .expense ? "Expense" : "Income",
+            t.title, t.userDescription ?? "", t.categoryName ?? "", t.accountName, t.bank.label,
+            decimal(t.amountMinor, t.type), t.currency.rawValue, decimal(t.defaultMinor, t.type), decimal(t.usdMinor, t.type),
+            t.counterpartyName ?? "", t.bankReference ?? "",
+            t.source == .alert ? "Bank alert" : t.source == .import ? "Statement import" : "Entered by hand",
+        ] }
+        let csv = "\u{FEFF}" + lines.map { $0.map(cell).joined(separator: ",") }.joined(separator: "\r\n") + "\r\n"
+        return ExportedFile(filename: query.filename(from: from, to: to), contentType: "text/csv; charset=utf-8", data: Data(csv.utf8))
+    }
+
     public func intakeEmail(_ request: IntakeEmailRequest, secret: String) async throws -> RawAlert {
         RawAlert(id: "ra_\(UUID().uuidString.prefix(8))", receivedAt: request.receivedAt, sender: request.from, subject: request.subject, status: .parsed, detail: nil, transactionId: nil)
     }

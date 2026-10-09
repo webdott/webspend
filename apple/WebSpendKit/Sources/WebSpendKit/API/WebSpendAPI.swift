@@ -31,6 +31,9 @@ public protocol WebSpendAPI: Sendable {
     func importPreview(_ request: ImportPreviewRequest) async throws -> ImportPreviewResponse
     func importCommit(_ request: ImportCommitRequest) async throws -> ImportCommitResponse
 
+    /// Downloads the transactions in a range of days as a CSV or PDF file.
+    func export(_ query: ExportQuery) async throws -> ExportedFile
+
     // Intake relay (needs the intake secret, not a session token)
     func intakeEmail(_ request: IntakeEmailRequest, secret: String) async throws -> RawAlert
 }

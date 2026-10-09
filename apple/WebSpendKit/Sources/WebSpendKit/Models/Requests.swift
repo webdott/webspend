@@ -404,3 +404,66 @@ public struct IntakeEmailResponse: Codable, Sendable, Hashable {
     public var alert: RawAlert
     public init(alert: RawAlert) { self.alert = alert }
 }
+
+// MARK: Export
+
+public enum ExportFormat: String, Codable, CaseIterable, Sendable, Hashable, Identifiable {
+    case csv, pdf
+
+    public var id: String { rawValue }
+    public var label: String { rawValue.uppercased() }
+    public var contentType: String {
+        switch self {
+        case .csv: "text/csv"
+        case .pdf: "application/pdf"
+        }
+    }
+}
+
+/// `GET /api/exports`. Days are `YYYY-MM-DD`, both inclusive; the server fills in a missing end
+/// with today and a missing start with the first of that month.
+public struct ExportQuery: Sendable, Hashable {
+    public var format: ExportFormat
+    public var from: String?
+    public var to: String?
+    public var accountId: String?
+    public var categoryId: String?
+    public var type: TransactionType?
+
+    public init(format: ExportFormat, from: String? = nil, to: String? = nil, accountId: String? = nil, categoryId: String? = nil, type: TransactionType? = nil) {
+        self.format = format
+        self.from = from
+        self.to = to
+        self.accountId = accountId
+        self.categoryId = categoryId
+        self.type = type
+    }
+
+    public var queryItems: [URLQueryItem] {
+        var items = [URLQueryItem(name: "format", value: format.rawValue)]
+        if let from { items.append(URLQueryItem(name: "from", value: from)) }
+        if let to { items.append(URLQueryItem(name: "to", value: to)) }
+        if let accountId { items.append(URLQueryItem(name: "accountId", value: accountId)) }
+        if let categoryId { items.append(URLQueryItem(name: "categoryId", value: categoryId)) }
+        if let type { items.append(URLQueryItem(name: "type", value: type.rawValue)) }
+        return items
+    }
+
+    /// The name the server gives the file for this range.
+    public func filename(from: String, to: String) -> String {
+        "webspend-\(from)-to-\(to).\(format.rawValue)"
+    }
+}
+
+/// A file the server built, ready to save or share.
+public struct ExportedFile: Sendable, Hashable {
+    public var filename: String
+    public var contentType: String
+    public var data: Data
+
+    public init(filename: String, contentType: String, data: Data) {
+        self.filename = filename
+        self.contentType = contentType
+        self.data = data
+    }
+}

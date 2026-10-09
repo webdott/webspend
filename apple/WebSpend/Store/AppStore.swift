@@ -68,6 +68,8 @@ final class AppStore {
     var macSection: MacSection = .summary
     /// Shows the add-a-transaction sheet. Set from any screen's Add button.
     var isAddingTransaction = false
+    /// Shows the export sheet, started from the month on show.
+    var isExporting = false
 
     init() {
         let url = SessionStorage.serverURL
