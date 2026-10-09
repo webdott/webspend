@@ -31,7 +31,7 @@ struct RoundButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: size * 0.36, weight: .semibold))
+                .font(.system(size: size * 0.46, weight: .semibold))
                 .foregroundStyle(WS.ink)
                 .frame(width: size, height: size)
                 .background(WS.card, in: Circle())

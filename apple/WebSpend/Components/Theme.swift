@@ -66,9 +66,9 @@ extension Font {
         .system(size: size, weight: weight)
     }
 
-    /// Amounts: SF Mono stands in for Geist Mono.
-    static func wsMono(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+    /// Amounts: SF Rounded with fixed-width digits so columns still line up.
+    static func wsMono(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight, design: .rounded).monospacedDigit()
     }
 }
 

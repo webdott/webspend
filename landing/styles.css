@@ -17,7 +17,7 @@
   --shadow: 0 1px 2px rgba(11, 13, 16, 0.04), 0 12px 32px rgba(11, 13, 16, 0.06);
 
   --font: Geist, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --num: Manrope, Geist, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --r-hero: 24px;
   --r-card: 20px;
@@ -96,7 +96,7 @@ a {
   text-decoration: none;
 }
 a:hover {
-  text-decoration: underline;
+  color: var(--ink);
 }
 
 img,
@@ -377,7 +377,7 @@ h1 {
   letter-spacing: -0.02em;
 }
 .mock-rate {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-weight: 500;
   font-size: 12px;
   color: var(--accent-text);
@@ -396,7 +396,7 @@ h1 {
 }
 .hc-amount {
   margin-top: 6px;
-  font-family: var(--mono);
+  font-family: var(--num);
   font-weight: 500;
   font-size: clamp(32px, 3.2vw, 42px);
   line-height: 1.05;
@@ -427,7 +427,7 @@ h1 {
 }
 .hc-figure {
   margin-top: 4px;
-  font-family: var(--mono);
+  font-family: var(--num);
   font-weight: 500;
   font-size: 17px;
   letter-spacing: -0.03em;
@@ -512,7 +512,7 @@ h1 {
   gap: 2px;
 }
 .amt {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.02em;
@@ -522,7 +522,7 @@ h1 {
   color: var(--muted);
 }
 .usd {
-  font-family: var(--mono);
+  font-family: var(--num);
   font-size: 11px;
   color: var(--muted);
 }
@@ -581,7 +581,7 @@ h3 {
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
-  font-family: var(--mono);
+  font-family: var(--num);
   font-weight: 500;
   font-size: 14px;
   margin-bottom: 18px;

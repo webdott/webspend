@@ -180,7 +180,7 @@ function Hero({ s, showUsd }: { s: S; showUsd: boolean }) {
             {showUsd && s.spentUsdMinor !== null
               ? `${formatApprox(s.spentUsdMinor, 'USD')} · `
               : ''}
-            <Link to="/settings" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            <Link to="/settings" style={{ fontWeight: 600 }}>
               Set a monthly budget
             </Link>{' '}
             to see what is left

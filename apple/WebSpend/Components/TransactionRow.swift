@@ -71,9 +71,9 @@ struct BankBadge: View {
         ZStack {
             Circle().fill(WS.chip)
             if type == .income {
-                Image(systemName: "arrow.down.left").font(.system(size: size * 0.36, weight: .semibold)).foregroundStyle(WS.accentText)
+                Image(systemName: "arrow.down.left").font(.system(size: size * 0.44, weight: .semibold)).foregroundStyle(WS.accentText)
             } else if type == .transfer {
-                Image(systemName: "arrow.left.arrow.right").font(.system(size: size * 0.34, weight: .semibold)).foregroundStyle(WS.muted)
+                Image(systemName: "arrow.left.arrow.right").font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(WS.muted)
             } else {
                 Text(initial).font(.ws(size * 0.38, .semibold)).foregroundStyle(WS.ink)
             }
