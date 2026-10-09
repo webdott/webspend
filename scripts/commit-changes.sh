@@ -5,29 +5,22 @@
 #   ./scripts/commit-changes.sh 2 3       run only phases 2 and 3
 #   ./scripts/commit-changes.sh --list    print the phases and their commit titles
 #
-# This round: sign-in checks the email permission, the poller recovers from a revoked token, and
-# a file can be imported with no account. Safe to re-run: a phase with nothing new to commit is
-# skipped.
+# This round: an Add button everywhere for entering a transaction on any account, and a
+# scrollable categories list. Safe to re-run: a phase with nothing new to commit is skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TITLES=(
-  "feat(shared): add the no-account import option to the contract"
-  "fix(server): require the email permission at sign-in and retry a revoked Gmail token"
-  "feat(server): import a file with no account"
-  "feat(web): import a file with no account"
-  "feat(apple): import a file with no account"
+  "feat(web): add a transaction on any account from an Add button on every page"
+  "feat(apple): add a transaction on any account from an Add button"
   "chore: update the commit script"
 )
 
 paths_for() {
   case "$1" in
-    1) echo "shared" ;;
-    2) echo "server/src/auth server/src/intake" ;;
-    3) echo "server" ;;
-    4) echo "web" ;;
-    5) echo "apple" ;;
-    6) echo "scripts" ;;
+    1) echo "web" ;;
+    2) echo "apple" ;;
+    3) echo "scripts" ;;
     *) echo "Unknown phase: $1 (there are ${#TITLES[@]})" >&2; exit 1 ;;
   esac
 }
