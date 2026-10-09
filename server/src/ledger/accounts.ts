@@ -53,6 +53,31 @@ export async function getAccount(db: Db, userId: string, id: string): Promise<Ac
   return toAccount(row);
 }
 
+const UNASSIGNED_NAME = 'Unassigned';
+
+/**
+ * The catch-all account for imported rows that belong to no bank or account. It is not one of
+ * the user's own accounts, so it never takes part in transfer-to-self matching.
+ */
+export async function unassignedAccount(
+  db: Db,
+  user: { id: string; defaultCurrency: Currency },
+): Promise<Account> {
+  const [row] = await db.query(
+    `select ${COLUMNS} from accounts
+      where user_id = $1 and bank = 'other' and name = $2 and not is_own
+      order by created_at limit 1`,
+    [user.id, UNASSIGNED_NAME],
+  );
+  if (row) return toAccount(row);
+  return createAccount(db, user.id, {
+    bank: 'other',
+    name: UNASSIGNED_NAME,
+    currency: user.defaultCurrency,
+    isOwn: false,
+  });
+}
+
 export async function createAccount(
   db: Db,
   userId: string,

@@ -1,11 +1,12 @@
 import {
   type ImportCommitRequest,
   type ImportCommitResponse,
+  NO_ACCOUNT,
   parseMinor,
   type User,
 } from '@webspend/shared';
 import type { Db } from '../db/index.ts';
-import { getAccount } from '../ledger/accounts.ts';
+import { getAccount, unassignedAccount } from '../ledger/accounts.ts';
 import { ensureCategories } from '../ledger/categories.ts';
 import { InvalidRequestError } from '../ledger/errors.ts';
 import { type RecordOptions, recordImportedRows } from '../ledger/record.ts';
@@ -30,7 +31,10 @@ export async function commitImport(
   request: ImportCommitRequest,
   options: RecordOptions = {},
 ): Promise<ImportCommitResponse> {
-  const account = await getAccount(db, user.id, request.accountId);
+  const account =
+    request.accountId === NO_ACCOUNT
+      ? await unassignedAccount(db, user)
+      : await getAccount(db, user.id, request.accountId);
   const table = readTable(request.format, request.content);
   const fields = invert(request.mapping.columns);
   if (!fields.date) throw new InvalidRequestError('the mapping needs a date column');

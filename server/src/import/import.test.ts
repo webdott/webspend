@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import type { ImportCommitRequest } from '@webspend/shared';
+import { type ImportCommitRequest, NO_ACCOUNT } from '@webspend/shared';
 import { test } from 'node:test';
+import { listAccounts } from '../ledger/accounts.ts';
 import { listCategories } from '../ledger/categories.ts';
 import { monthSummary } from '../ledger/summary.ts';
 import { fixture, sample, SENDERS } from '../ledger/testing.ts';
@@ -277,4 +278,25 @@ test('a category column creates the missing categories, files the rows and carri
   assert.equal(october.carryOverMinor, 7_000_000);
   assert.equal(october.availableMinor, 7_000_000 - 4_875_000);
   assert.equal((await monthSummary(db, user, '2026-09')).carryOverMinor, 0);
+});
+
+test('a file imported with no account lands in one Unassigned account that is not mine', async () => {
+  const { db, user } = await fixture();
+  const request: ImportCommitRequest = {
+    accountId: NO_ACCOUNT,
+    format: 'csv',
+    content: 'Date,Amount,Note\n09/10/2026,-600,Water\n',
+    mapping: {
+      columns: { Date: 'date', Amount: 'amount', Note: 'description' },
+      dateOrder: 'dmy',
+      negativeIsExpense: true,
+    },
+  };
+  assert.equal((await commitImport(db, user, request)).added, 1);
+  assert.equal((await commitImport(db, user, request)).skipped, 1);
+  const unassigned = (await listAccounts(db, user.id)).filter((a) => a.name === 'Unassigned');
+  assert.deepEqual(
+    unassigned.map((a) => [a.bank, a.isOwn]),
+    [['other', false]],
+  );
 });

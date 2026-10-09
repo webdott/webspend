@@ -14,6 +14,7 @@ import {
   intakeEmailSchema,
   type MeResponse,
   monthSchema,
+  NO_ACCOUNT,
   type RatesResponse,
   type TransactionsResponse,
   type TransactionType,
@@ -260,13 +261,15 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
 
   api.post('/imports/preview', async (c) => {
     const input = await parseBody(c, importPreviewSchema);
-    await getAccount(db, c.get('user').id, requireUuid(input.accountId, 'account'));
+    if (input.accountId !== NO_ACCOUNT) {
+      await getAccount(db, c.get('user').id, requireUuid(input.accountId, 'account'));
+    }
     return c.json(previewImport(input));
   });
   api.post('/imports', async (c) => {
     const user = c.get('user');
     const input = (await parseBody(c, importCommitSchema)) as ImportCommitRequest;
-    requireUuid(input.accountId, 'account');
+    if (input.accountId !== NO_ACCOUNT) requireUuid(input.accountId, 'account');
     return c.json(await commitImport(db, user, input, recordOptions));
   });
 
