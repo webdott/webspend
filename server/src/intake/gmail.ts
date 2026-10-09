@@ -62,7 +62,10 @@ export class GmailSource implements MailboxSource {
       headers: { authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(30_000),
     });
-    if (!response.ok) throw new Error(`gmail ${path.split('?')[0]} answered ${response.status}`);
+    if (!response.ok) {
+      const reason = await googleErrorMessage(response);
+      throw new Error(`gmail ${path.split('?')[0]} answered ${response.status}: ${reason}`);
+    }
     return response.json();
   }
 
@@ -150,4 +153,9 @@ function findPart(part: GmailPart | undefined, mimeType: string): GmailPart | nu
 
 function decodeBody(part: GmailPart): string {
   return Buffer.from(part.body?.data ?? '', 'base64url').toString('utf8');
+}
+
+async function googleErrorMessage(response: Response): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+  return body?.error?.message ?? 'no reason given';
 }
