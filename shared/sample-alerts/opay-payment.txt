@@ -1,0 +1,38 @@
+                            Dear TEST USER SAMPLE ,
+
+                            Your payment of
+                            ₦2,413.00
+                            is successful.
+                            Your available balance is
+                              ₦24,041.34 .
+
+                           
+
+                            Payment Details:
+
+                            Transaction No.:
+
+                            260928140300000000000002
+
+                            Merchant Name:
+
+                            Paystack Payment Limited
+
+                            Merchant Order Number:
+
+                            paystack_0000000001_abcde
+
+                            Transaction Date:
+
+                            Sep 28th, 2026 13:41:55
+
+                           
+
+                            For further enquiries, please contact our customer
+                            support through the following channels:
+
+                            Phone： 07008888328
+
+                            Thank you for choosing OPay.
+
+Click here to unsubscribe

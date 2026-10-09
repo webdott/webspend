@@ -1,0 +1,31 @@
+| | [](#ADVERT_TOP_LINK#) |
+| | 8:36:47 PM |
+| Dear SAMPLE, TEST USER |
+| |
+| #### Guaranty Trust Bank electronic Notification Service (GeNS) |
+| |
+| We wish to inform you that a DEBIT transaction occurred on your account with us. |
+| |
+| The details of this transaction are shown below: |
+| |
+| #### Transaction Notification |
+
+| |
+| Account Number | : | ******0001 |
+| Transaction Location | : | 205 |
+| Description | : | WEB PUR SAMPLE CLOUD A1B2C3 CC SAMPLE COM IE 000001 600000000001 WPGTID01 |
+| Amount | : | NGN 6685 |
+| Value Date | : | 2026-10-03 |
+| Remarks | : | 500000*********0001 |
+| Time of Transaction | : | 8:36:47 PM |
+| Document Number | : | 000001 |
+| |
+| The balances on this account as at 8:36:47 PM are as follows; |
+| |
+| Current Balance | : | NGN 83724.49 |
+| Available Balance | : | NGN 83605.69 |
+| |
+
+| The privacy and security of your Bank Account details is important to us. |
+| |
+| Thank you for choosing Guaranty Trust Bank Limited |

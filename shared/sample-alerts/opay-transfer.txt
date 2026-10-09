@@ -1,0 +1,49 @@
+                            Dear TEST USER SAMPLE ,
+
+                            Your transfer of
+                            ₦50,000.00
+                            is successful.
+                            Your available balance is
+                              ₦106,716.47 .
+
+                           
+
+                            Transfer Details:
+
+                            Name:
+
+                            ADA EXAMPLE OKORO
+
+                            Bank:
+
+                            OPay
+
+                            Account Number:
+
+                            8100000001
+
+                            Amount:
+
+                            ₦50,000.00
+
+                            Transaction No.:
+                            260919010100000000000001
+
+                            Transaction Date:
+
+                            Sep 19th, 2026 22:37:34
+
+                           
+
+                            For further enquiries, please contact our customer
+                            support through the following channels:
+
+                            Phone： 07008888328
+
+                            Email： customerservice@opay-inc.com
+
+                            Thank you for choosing OPay.
+
+                            The OPay Team
+
+Click here to unsubscribe

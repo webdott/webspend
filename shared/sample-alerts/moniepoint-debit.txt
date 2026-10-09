@@ -1,0 +1,59 @@
+Hi TEST,
+
+We wish to inform you that a debit transaction occurred on your account with us. Log in to Business Banking ( https://example.invalid/ls/click?upn=sample ) for more details.
+
+Debit Amount
+
+120,000.00
+
+Transaction Details
+
+Account Balance:
+
+N 684,289.47
+
+Account Number:
+
+6600000001
+
+Date & Time:
+
+06 Oct, 2026 | 04:00:10 PM
+
+Narration:
+
+TRANSFER TO BOLA SAMPLE ADEYEMI Guaranty Trust Bank *****00001/TRF|2MPTsample|2100000000000000001
+
+If you experience any problems kindly contact us at support@moniepoint.com or send us a WhatsApp message at +234 908 843 0803
+
+Follow us on:
+
+( https://example.invalid/a ) ( https://example.invalid/b )
+
+Hi TEST,
+
+We wish to inform you that a debit transaction occurred on your account with us. Log in to Business Banking ( https://example.invalid/ls/click?upn=sample ) for more details.
+
+Debit Amount
+
+120,000.00
+
+Transaction Details
+
+Account Balance:
+
+N 684,289.47
+
+Account Number:
+
+6600000001
+
+Date & Time:
+
+06 Oct, 2026 | 04:00:10 PM
+
+Narration:
+
+TRANSFER TO BOLA SAMPLE ADEYEMI Guaranty Trust Bank *****00001/TRF|2MPTsample|2100000000000000001
+
+If you experience any problems kindly contact us at support@moniepoint.com or send us a WhatsApp message at +234 908 843 0803

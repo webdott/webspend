@@ -1,0 +1,29 @@
+| | [](#ADVERT_TOP_LINK#) |
+| | 5:56:38 PM |
+| Dear SAMPLE, TEST USER |
+| |
+| #### Guaranty Trust Bank electronic Notification Service (GeNS) |
+| |
+| We wish to inform you that a CREDIT transaction occurred on your account with us. |
+| |
+| The details of this transaction are shown below: |
+| |
+| #### Transaction Notification |
+
+| |
+| Account Number | : | ******0001 |
+| Transaction Location | : | 205 |
+| Description | : | 090405260914000000000000000001-TRANSFER FROM SAMPLE SENDER LTDAT126TRF2MPTSAMPLE2099 |
+| Amount | : | NGN 50000 |
+| Value Date | : | 2026-09-14 |
+| Remarks | : | 5400000001 64256AT126TRF2MPTSAMPLE20995400000001-M |
+| Time of Transaction | : | 5:56:38 PM |
+| Document Number | : | 09040526091400000001 |
+| |
+| The balances on this account as at 5:56:38 PM are as follows; |
+| |
+| Current Balance | : | NGN 90493.34 |
+| Available Balance | : | NGN 90374.54 |
+| |
+
+| Thank you for choosing Guaranty Trust Bank Limited |
