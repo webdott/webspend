@@ -332,12 +332,14 @@ button {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }
 .section-title a,
 .section-title .side {
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 .section-title .side {
   color: var(--muted);
@@ -360,12 +362,17 @@ button {
 }
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …) lets a column shrink below its content, so long rows wrap instead of
+     pushing the card off the page. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
+}
+.grid-2 > * {
+  min-width: 0;
 }
 @media (max-width: 860px) {
   .grid-2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -873,7 +880,7 @@ button {
 }
 .cat-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
@@ -887,6 +894,7 @@ button {
 }
 .cat-row__amount {
   text-align: right;
+  white-space: nowrap;
   font-size: 15px;
 }
 .cat-row__bar {
@@ -919,6 +927,7 @@ button {
 }
 .table td {
   padding: 11px 14px;
+  overflow-wrap: anywhere;
   border-top: 1px solid var(--line);
   vertical-align: middle;
 }
