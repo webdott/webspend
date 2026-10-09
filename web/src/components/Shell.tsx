@@ -1,9 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { formatRate } from '@webspend/shared';
 import { useMe, useRates } from '../api/hooks.ts';
 import { isApiError } from '../api/client.ts';
 import { applyTheme } from '../theme.ts';
+import {
+  AddTransactionButton,
+  AddTransactionContext,
+  AddTransactionDialog,
+} from './AddTransaction.tsx';
 import { Logo } from './Logo.tsx';
 import { ErrorState, LoadingState } from './ui.tsx';
 import { UserContext } from './user.ts';
@@ -21,6 +26,7 @@ export function Shell() {
   const me = useMe();
   const location = useLocation();
   const user = me.data?.user;
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     applyTheme(user?.theme);
@@ -46,13 +52,24 @@ export function Shell() {
 
   return (
     <UserContext.Provider value={user!}>
-      <div className="shell">
-        <Header />
-        <main className="main">
-          <Outlet />
-        </main>
-        <TabBar />
-      </div>
+      <AddTransactionContext.Provider value={() => setAdding(true)}>
+        <div className="shell">
+          <Header />
+          <main className="main">
+            <Outlet />
+          </main>
+          <button
+            type="button"
+            className="fab"
+            aria-label="Add a transaction"
+            onClick={() => setAdding(true)}
+          >
+            +
+          </button>
+          <TabBar />
+        </div>
+        {adding ? <AddTransactionDialog onClose={() => setAdding(false)} /> : null}
+      </AddTransactionContext.Provider>
     </UserContext.Provider>
   );
 }
@@ -82,6 +99,7 @@ function Header() {
             {formatRate(rate.perUsd, user.defaultCurrency)}
           </span>
         ) : null}
+        <AddTransactionButton className="header__add" />
       </div>
     </header>
   );

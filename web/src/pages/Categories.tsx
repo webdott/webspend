@@ -94,7 +94,7 @@ export function Categories() {
         ) : cats.data.categories.length === 0 ? (
           <EmptyState>No categories yet. Add a few above, like Food or Transport.</EmptyState>
         ) : (
-          <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="list list--scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {cats.data.categories.map((c) => (
               <CategoryItem
                 key={c.id}

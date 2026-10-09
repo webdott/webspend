@@ -184,6 +184,38 @@ button {
   white-space: nowrap;
   margin-left: auto;
 }
+.header__add {
+  margin-left: auto;
+}
+.rate-line + .header__add {
+  margin-left: 0;
+}
+.fab {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(11, 13, 16, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+}
+.modal__panel {
+  width: min(520px, 100%);
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--r-hero);
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 24px 60px rgba(11, 13, 16, 0.35);
+}
 .main {
   flex: 1;
   width: 100%;
@@ -203,6 +235,35 @@ button {
   }
   .nav {
     display: none;
+  }
+  .header__add {
+    display: none;
+  }
+  .fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--tabbar-h) + 16px);
+    z-index: 11;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    padding-bottom: 4px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 30px;
+    line-height: 1;
+    box-shadow: 0 10px 24px rgba(91, 75, 255, 0.45);
+  }
+  .modal {
+    place-items: end center;
+    padding: 0;
+  }
+  .modal__panel {
+    border-radius: var(--r-hero) var(--r-hero) 0 0;
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
   }
   .main {
     padding-top: 20px;
@@ -1010,6 +1071,16 @@ button {
 .list {
   display: flex;
   flex-direction: column;
+}
+.list--scroll {
+  max-height: min(520px, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Room for the scrollbar so it does not sit on the row buttons. */
+  padding-right: 8px !important;
+  margin-right: -8px !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 .list-item {
   display: flex;
