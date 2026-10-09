@@ -5,7 +5,14 @@ import type { Config } from '../config.ts';
 import type { Db } from '../db/index.ts';
 import { ensureUser } from '../ledger/users.ts';
 import { HttpError, parseBody } from '../api/errors.ts';
-import { completeSignIn, consentUrl, emailFromTokens, exchangeCode, takeState } from './google.ts';
+import {
+  completeSignIn,
+  consentUrl,
+  emailFromTokens,
+  exchangeCode,
+  grantsMailbox,
+  takeState,
+} from './google.ts';
 import {
   type Client,
   createSession,
@@ -46,6 +53,13 @@ export function authRoutes(db: Db, config: Config): Hono {
     if (!client || !code) throw new HttpError(400, 'invalid_request', 'sign-in expired, try again');
 
     const tokens = await exchangeCode(config, code);
+    if (!grantsMailbox(tokens)) {
+      throw new HttpError(
+        400,
+        'mailbox_not_granted',
+        'WebSpend was not allowed to read your email. Sign in again and tick "View your email messages and settings" on Google\'s screen.',
+      );
+    }
     const email = await emailFromTokens(tokens);
     const user = await completeSignIn(db, email, tokens);
     const token = await createSession(db, user.id, client);

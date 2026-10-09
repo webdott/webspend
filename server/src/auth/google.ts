@@ -11,7 +11,8 @@ import type { Client } from './sessions.ts';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
-const SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly'];
+const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const SCOPES = ['openid', 'email', GMAIL_SCOPE];
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 // Pending sign-ins, keyed by state. Lost on restart, which only means signing in again.
@@ -51,7 +52,14 @@ export type GoogleTokens = {
   refresh_token?: string;
   expires_in: number;
   id_token?: string;
+  /** The scopes the person actually granted, space-separated. */
+  scope?: string;
 };
+
+/** Google lets people untick individual permissions, so the mailbox one has to be checked for. */
+export function grantsMailbox(tokens: GoogleTokens): boolean {
+  return (tokens.scope ?? '').split(' ').includes(GMAIL_SCOPE);
+}
 
 export async function exchangeCode(config: Config, code: string): Promise<GoogleTokens> {
   const response = await fetch(TOKEN_URL, {

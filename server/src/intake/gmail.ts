@@ -57,11 +57,10 @@ export class GmailSource implements MailboxSource {
   }
 
   async #get(path: string): Promise<unknown> {
-    const token = await this.#accessToken();
-    const response = await fetch(`${API}${path}`, {
-      headers: { authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(30_000),
-    });
+    let response = await this.#fetch(path, await this.#accessToken());
+    // A stored token can be revoked before it expires (access removed, then granted again), so
+    // a 401 gets one more try with a newly issued token.
+    if (response.status === 401) response = await this.#fetch(path, await this.#accessToken(true));
     if (!response.ok) {
       const reason = await googleErrorMessage(response);
       throw new Error(`gmail ${path.split('?')[0]} answered ${response.status}: ${reason}`);
@@ -69,7 +68,14 @@ export class GmailSource implements MailboxSource {
     return response.json();
   }
 
-  async #accessToken(): Promise<string> {
+  #fetch(path: string, token: string): Promise<Response> {
+    return fetch(`${API}${path}`, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+  }
+
+  async #accessToken(forceRefresh = false): Promise<string> {
     const [row] = await this.#db.query<{
       refresh_token: string;
       access_token: string | null;
@@ -79,7 +85,8 @@ export class GmailSource implements MailboxSource {
     ]);
     if (!row) throw new Error('no mailbox token for this user');
     const expiresAt = isoOrNull(row.expires_at);
-    if (row.access_token && expiresAt && Date.parse(expiresAt) - Date.now() > 60_000) {
+    const stillValid = expiresAt !== null && Date.parse(expiresAt) - Date.now() > 60_000;
+    if (!forceRefresh && row.access_token && stillValid) {
       return row.access_token;
     }
     const fresh = await refreshAccessToken(this.#credentials, row.refresh_token);
@@ -107,7 +114,11 @@ export async function refreshAccessToken(
     }),
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new Error(`google token refresh answered ${response.status}`);
+  if (!response.ok) {
+    // 400 invalid_grant: access was removed or the grant expired, so only signing in again helps.
+    const hint = response.status === 400 ? ' (sign in to WebSpend with Google again)' : '';
+    throw new Error(`google token refresh answered ${response.status}${hint}`);
+  }
   const body = (await response.json()) as { access_token: string; expires_in: number };
   return {
     accessToken: body.access_token,
