@@ -28,7 +28,7 @@ const USD_MINOR = `(case when t.currency = 'USD' then t.amount_minor
 export const TRANSACTION_SELECT = `
   select t.id, t.occurred_at, t.type, t.direction, t.amount_minor, t.currency, t.fx_per_usd,
     t.account_id, a.name as account_name, a.bank, t.counterparty_name, t.counterparty_bank,
-    t.counterparty_account, t.bank_description, t.user_description, t.category_id,
+    t.counterparty_account, t.bank_description, t.user_description, t.user_title, t.category_id,
     c.name as category_name, t.source, t.bank_reference, t.transfer_group_id, t.is_fee,
     t.created_at, t.payee_key, t.balance_after_minor, t.unsure_transfer,
     $2::text as default_currency,
@@ -51,6 +51,7 @@ export const TRANSACTION_SELECT = `
 
 export function toTransaction(row: Row): Transaction {
   const userDescription = text(row.user_description);
+  const userTitle = text(row.user_title);
   const counterpartyName = text(row.counterparty_name);
   const bankDescription = text(row.bank_description);
   return {
@@ -66,7 +67,8 @@ export function toTransaction(row: Row): Transaction {
     accountId: String(row.account_id),
     accountName: String(row.account_name),
     bank: row.bank as Bank,
-    title: userDescription || counterpartyName || bankDescription || 'Transaction',
+    title: userTitle || userDescription || counterpartyName || bankDescription || 'Transaction',
+    userTitle,
     counterpartyName,
     counterpartyBank: text(row.counterparty_bank),
     counterpartyAccount: text(row.counterparty_account),
@@ -108,8 +110,8 @@ export async function listTransactions(
      where t.user_id = $1
        and ($3::timestamptz is null or t.occurred_at >= $3::timestamptz)
        and ($4::timestamptz is null or t.occurred_at < $4::timestamptz)
-       and ($5::text is null or t.user_description ilike $5 or t.counterparty_name ilike $5
-            or t.bank_description ilike $5)
+       and ($5::text is null or t.user_title ilike $5 or t.user_description ilike $5
+            or t.counterparty_name ilike $5 or t.bank_description ilike $5)
        and ($6::text is null
             or ($6 = 'none' and t.category_id is null)
             or ($6 <> 'none' and t.category_id::text = $6))
@@ -156,16 +158,38 @@ export async function getTransactionRow(db: Db, userId: string, id: string): Pro
   return row;
 }
 
+export type TransactionEdits = {
+  categoryId?: string | null;
+  userDescription?: string | null;
+  title?: string | null;
+  counterpartyName?: string | null;
+  amountMinor?: number;
+  occurredAt?: string;
+};
+
 export async function setTransactionFields(
   db: Db,
   userId: string,
   id: string,
-  patch: { categoryId?: string | null; userDescription?: string | null },
+  patch: TransactionEdits,
 ): Promise<void> {
+  // A new date takes that day's exchange rate, keeping the old one if no rate is known for it.
   await db.query(
-    `update transactions set
+    `update transactions t set
        category_id = case when $3 then $4::uuid else category_id end,
-       user_description = case when $5 then $6 else user_description end
+       user_description = case when $5 then $6 else user_description end,
+       user_title = case when $7 then $8 else user_title end,
+       counterparty_name = case when $9 then $10 else counterparty_name end,
+       amount_minor = coalesce($11::bigint, amount_minor),
+       occurred_at = coalesce($12::timestamptz, occurred_at),
+       fx_per_usd = case
+         when $12::timestamptz is null or t.currency = 'USD' then fx_per_usd
+         else coalesce(
+           (select r.per_usd from fx_rates r
+             where r.currency = t.currency and r.day <= ($12::timestamptz + interval '1 hour')::date
+             order by r.day desc limit 1),
+           fx_per_usd)
+       end
      where user_id = $1 and id = $2::uuid`,
     [
       userId,
@@ -174,6 +198,12 @@ export async function setTransactionFields(
       patch.categoryId ?? null,
       'userDescription' in patch,
       patch.userDescription || null,
+      'title' in patch,
+      patch.title || null,
+      'counterpartyName' in patch,
+      patch.counterpartyName || null,
+      patch.amountMinor ?? null,
+      patch.occurredAt ?? null,
     ],
   );
 }

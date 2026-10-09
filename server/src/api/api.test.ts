@@ -122,6 +122,26 @@ test('sign in, categorise, enter a transaction, read the summary, remember the p
   const [rule] = await db.query('select payee_key from payee_rules');
   assert.equal(rule!.payee_key, 'mama put');
 
+  const before = patched.body.transaction;
+  const edited = await call('PATCH', `/api/transactions/${transaction.id}`, {
+    title: 'Dinner with Ada',
+    amountMinor: before.amountMinor + 500,
+    occurredAt: '2026-10-02T19:30:00+01:00',
+    counterpartyName: 'Mama Put Kitchen',
+  });
+  assert.equal(edited.body.transaction.title, 'Dinner with Ada');
+  assert.equal(edited.body.transaction.userTitle, 'Dinner with Ada');
+  assert.equal(edited.body.transaction.amountMinor, before.amountMinor + 500);
+  assert.equal(edited.body.transaction.occurredAt, '2026-10-02T18:30:00.000Z');
+  assert.equal(edited.body.transaction.counterpartyName, 'Mama Put Kitchen');
+  const restored = await call('PATCH', `/api/transactions/${transaction.id}`, {
+    title: null,
+    amountMinor: before.amountMinor,
+    occurredAt: before.occurredAt,
+    counterpartyName: before.counterpartyName,
+  });
+  assert.equal(restored.body.transaction.title, before.title);
+
   const usd = await call('PATCH', '/api/settings', { defaultCurrency: 'USD' });
   assert.equal(usd.body.user.defaultCurrency, 'USD');
   const converted = await call('GET', `/api/transactions/${transaction.id}`);
