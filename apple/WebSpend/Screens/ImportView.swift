@@ -47,7 +47,7 @@ struct ImportView: View {
         .task {
             if store.accounts.value == nil { await store.loadAccounts() }
             if accountId.isEmpty {
-                accountId = store.accounts.value?.first { $0.bank.isTracked }?.id ?? ""
+                accountId = store.accounts.value?.first { $0.bank.isTracked }?.id ?? ImportPreviewRequest.noAccount
             }
         }
     }
@@ -55,17 +55,18 @@ struct ImportView: View {
     private var stepAccount: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle("1. Account")
-            if let accounts = store.accounts.value, !accounts.isEmpty {
+            if let accounts = store.accounts.value {
                 Picker("Account", selection: $accountId) {
                     ForEach(accounts) { account in
                         Text("\(account.name) · \(account.bank.label)").tag(account.id)
                     }
+                    Text("No account (file under Unassigned)").tag(ImportPreviewRequest.noAccount)
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
                 .tint(WS.ink)
             } else {
-                Text("Add an account first.").font(.ws(13)).foregroundStyle(WS.muted)
+                LoadingState()
             }
         }
         .wsCard()

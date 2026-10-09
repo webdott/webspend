@@ -307,6 +307,10 @@ public struct ImportMapping: Codable, Sendable, Hashable {
 }
 
 public struct ImportPreviewRequest: Codable, Sendable, Hashable {
+    /// Send as `accountId` for a file that belongs to no particular account; the server files it
+    /// under a catch-all account named "Unassigned".
+    public static let noAccount = "none"
+
     public var accountId: String
     public var format: ImportFormat
     public var content: String
