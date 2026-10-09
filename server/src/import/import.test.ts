@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
+import type { ImportCommitRequest } from '@webspend/shared';
 import { test } from 'node:test';
-import { insertGap, getGap } from '../ledger/gaps.ts';
-import { fixture } from '../ledger/testing.ts';
+import { fixture, sample, SENDERS } from '../ledger/testing.ts';
 import { listTransactions } from '../ledger/transactions.ts';
 import { parseCsv } from './csv.ts';
 import { parseDate } from './dates.ts';
@@ -65,25 +65,15 @@ test('dates in the common statement formats read as Lagos time', () => {
   assert.equal(parseDate('hello', 'dmy'), null);
 });
 
-test('committing a CSV adds rows, skips duplicates, reports bad rows and fills the gap', async () => {
+test('committing a CSV adds rows, skips duplicates and reports bad rows', async () => {
   const { db, user, accounts } = await fixture();
   const gtbank = accounts.gtbank!;
-  const gap = await insertGap(db, {
-    userId: user.id,
-    accountId: gtbank.id,
-    fromAt: '2026-10-02T00:00:00+01:00',
-    toAt: '2026-10-06T00:00:00+01:00',
-    expectedBalanceMinor: 100,
-    actualBalanceMinor: 50,
-    currency: 'NGN',
-  });
   const preview = previewImport({ accountId: gtbank.id, format: 'csv', content: CSV });
   const request = {
     accountId: gtbank.id,
     format: 'csv' as const,
     content: CSV,
     mapping: preview.suggestedMapping,
-    gapId: gap.id,
   };
 
   const first = await commitImport(db, user, request);
@@ -99,7 +89,6 @@ test('committing a CSV adds rows, skips duplicates, reports bad rows and fills t
   assert.equal(pos.title, 'POS PURCHASE, SHOPRITE');
   assert.equal(pos.source, 'import');
   assert.equal(transactions.find((t) => t.bankReference === 'REF002')!.type, 'income');
-  assert.equal((await getGap(db, user.id, gap.id)).status, 'filled');
 
   const again = await commitImport(db, user, request);
   assert.equal(again.added, 0);
@@ -148,6 +137,48 @@ test('a statement row with a shortened narration and no reference matches the al
   // The shortened narration is the alert's prefix, so it is skipped; the airtime row is new.
   assert.equal(statement.skipped, 1);
   assert.equal(statement.added, 1);
+});
+
+test('identical rows in one statement are all kept, then all skipped on a re-import', async () => {
+  const { db, user, accounts } = await fixture();
+  const request: ImportCommitRequest = {
+    accountId: accounts.gtbank!.id,
+    format: 'csv',
+    content: 'Date,Narration,Debit\n03/10/2026,AIRTIME,100.00\n03/10/2026,AIRTIME,100.00\n',
+    mapping: {
+      columns: { Date: 'date', Narration: 'description', Debit: 'debit' },
+      dateOrder: 'dmy',
+      negativeIsExpense: true,
+    },
+  };
+  const first = await commitImport(db, user, request);
+  assert.deepEqual([first.added, first.skipped], [2, 0]);
+  const again = await commitImport(db, user, request);
+  assert.deepEqual([again.added, again.skipped], [0, 2]);
+});
+
+test('an imported credit still pairs with the alert that sent it from another own account', async () => {
+  const { db, user, accounts, send } = await fixture();
+  const debit = await send({
+    from: SENDERS.moniepoint,
+    subject: 'Debit alert!',
+    text: sample('moniepoint-debit'),
+  });
+  await commitImport(db, user, {
+    accountId: accounts.gtbank!.id,
+    format: 'csv',
+    content: 'Date,Narration,Credit\n06/10/2026 16:05,NIP TRANSFER,120000.00\n',
+    mapping: {
+      columns: { Date: 'date', Narration: 'description', Credit: 'credit' },
+      dateOrder: 'dmy',
+      negativeIsExpense: true,
+    },
+  });
+  const { transactions } = await listTransactions(db, user, {});
+  const sent = transactions.find((t) => t.id === debit.transactionId)!;
+  const received = transactions.find((t) => t.source === 'import')!;
+  assert.equal(received.type, 'transfer');
+  assert.equal(received.transferGroupId, sent.transferGroupId);
 });
 
 test('a JSON import with a single signed amount column', async () => {

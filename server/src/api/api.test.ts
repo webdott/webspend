@@ -138,7 +138,6 @@ test('sign in, categorise, enter a transaction, read the summary, remember the p
     404,
   );
   assert.equal((await call('GET', '/api/transactions/nope')).status, 404);
-  assert.equal((await call('PATCH', '/api/gaps/nope', { status: 'dismissed' })).status, 404);
   assert.equal((await call('DELETE', `/api/accounts/${cash.id}`)).status, 409);
   const rates = await call('GET', '/api/rates?day=2026-10-03');
   assert.ok(

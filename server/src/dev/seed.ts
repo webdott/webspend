@@ -12,7 +12,6 @@ import { openConfiguredDb } from '../db/open.ts';
 import { processAlertEmail } from '../intake/pipeline.ts';
 import { listAccounts } from '../ledger/accounts.ts';
 import { listCategories } from '../ledger/categories.ts';
-import { insertGap, listGaps, setGapStatus } from '../ledger/gaps.ts';
 import { type RecordInput, recordTransaction } from '../ledger/record.ts';
 import { ensureUser, updateSettings } from '../ledger/users.ts';
 import { storeRates } from '../rates/store.ts';
@@ -73,12 +72,6 @@ export async function seed(db: Db, email: string): Promise<User> {
       authenticated: true,
     });
   }
-  // The samples are days apart, so the balance check flags OPay between them. That is the rule
-  // doing its job, but the demo wants the single UBA gap below.
-  for (const gap of await listGaps(db, user.id, 'open')) {
-    await setGapStatus(db, user.id, gap.id, 'dismissed');
-  }
-
   await db.query(
     `update transactions set user_description = 'Cloud hosting', category_id = $2::uuid
      where user_id = $1 and bank_description like 'WEB PUR SAMPLE CLOUD%'`,
@@ -183,21 +176,6 @@ export async function seed(db: Db, email: string): Promise<User> {
     bankDescription: 'Payment to Paystack Payment Limited (order paystack_0000000002_fghij)',
     bankReference: '261007130500000000000003',
   });
-
-  await insertGap(db, {
-    userId: user.id,
-    accountId: account('uba'),
-    fromAt: '2026-09-28T09:00:00+01:00',
-    toAt: '2026-10-05T18:30:00+01:00',
-    expectedBalanceMinor: 42_000_000,
-    actualBalanceMinor: 39_750_000,
-    currency: 'NGN',
-  });
-  await db.query(
-    `update accounts set last_balance_minor = 39750000, last_balance_at = $2::timestamptz,
-       last_alert_at = $2::timestamptz where id = $1::uuid`,
-    [account('uba'), '2026-10-05T18:30:00+01:00'],
-  );
 
   return user;
 }

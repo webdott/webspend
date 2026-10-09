@@ -7,8 +7,7 @@ import {
 import type { Db } from '../db/index.ts';
 import { getAccount } from '../ledger/accounts.ts';
 import { InvalidRequestError } from '../ledger/errors.ts';
-import { getGap, markGapFilled } from '../ledger/gaps.ts';
-import { type RecordOptions, recordTransaction } from '../ledger/record.ts';
+import { type RecordOptions, recordImportedRows } from '../ledger/record.ts';
 import { lagosDay } from '../ledger/time.ts';
 import type { Table } from './csv.ts';
 import { parseDate } from './dates.ts';
@@ -30,7 +29,6 @@ export async function commitImport(
   options: RecordOptions = {},
 ): Promise<ImportCommitResponse> {
   const account = await getAccount(db, user.id, request.accountId);
-  const gap = request.gapId ? await getGap(db, user.id, request.gapId) : null;
   const table = readTable(request.format, request.content);
   const fields = invert(request.mapping.columns);
   if (!fields.date) throw new InvalidRequestError('the mapping needs a date column');
@@ -45,60 +43,41 @@ export async function commitImport(
   );
   const importId = importRow!.id;
 
-  let added = 0;
-  let skipped = 0;
   const errors: { row: number; reason: string }[] = [];
-  const seenDays: string[] = [];
-
+  const mapped: MappedRow[] = [];
   for (const [index, raw] of table.rows.entries()) {
-    const rowNumber = index + 1;
-    let row: MappedRow;
     try {
-      row = mapRow(raw, fields, request.mapping);
+      mapped.push(mapRow(raw, fields, request.mapping));
     } catch (error) {
-      errors.push({ row: rowNumber, reason: (error as Error).message });
-      continue;
+      errors.push({ row: index + 1, reason: (error as Error).message });
     }
-    seenDays.push(lagosDay(row.occurredAt));
-    if (await isDuplicate(db, account.id, row)) {
-      skipped += 1;
-      continue;
-    }
-    await recordTransaction(
-      db,
-      user,
-      {
-        accountId: account.id,
-        occurredAt: row.occurredAt,
-        type: row.direction === 'debit' ? 'expense' : 'income',
-        direction: row.direction,
-        amountMinor: row.amountMinor,
-        currency: account.currency,
-        counterpartyName: row.counterparty,
-        bankDescription: row.description,
-        bankReference: row.reference,
-        source: 'import',
-        importId,
-      },
-      options,
-    );
-    added += 1;
   }
+
+  const ledger = await ledgerEntries(db, account.id, mapped);
+  const fresh = mapped.filter((row) => !claimMatch(ledger, row));
+  const added = fresh.length;
+  const skipped = mapped.length - added;
+  await recordImportedRows(
+    db,
+    user,
+    account,
+    fresh.map((row) => ({
+      occurredAt: row.occurredAt,
+      direction: row.direction,
+      amountMinor: row.amountMinor,
+      counterpartyName: row.counterparty,
+      bankDescription: row.description,
+      bankReference: row.reference,
+    })),
+    importId,
+    options,
+  );
 
   await db.query('update imports set rows_added = $2, rows_skipped = $3 where id = $1::uuid', [
     importId,
     added,
     skipped,
   ]);
-
-  // The gap counts as filled when the imported rows reach into its window.
-  if (gap && seenDays.length > 0) {
-    const first = seenDays.reduce((a, b) => (a < b ? a : b));
-    const last = seenDays.reduce((a, b) => (a > b ? a : b));
-    if (first <= lagosDay(gap.toAt) && last >= lagosDay(gap.fromAt)) {
-      await markGapFilled(db, user.id, gap.id, importId);
-    }
-  }
 
   return { importId, added, skipped, errors };
 }
@@ -161,30 +140,74 @@ function readAmount(text: string): number | null {
   return minor;
 }
 
+type LedgerEntry = { reference: string | null; description: string; claimed: boolean };
+
+/** The account's existing transactions on the days the import covers, keyed by day and amount. */
+async function ledgerEntries(
+  db: Db,
+  accountId: string,
+  rows: MappedRow[],
+): Promise<Map<string, LedgerEntry[]>> {
+  const entries = new Map<string, LedgerEntry[]>();
+  if (rows.length === 0) return entries;
+  const days = rows.map((row) => lagosDay(row.occurredAt)).sort();
+  const existing = await db.query<{
+    day: string;
+    amount_minor: number;
+    bank_reference: string | null;
+    bank_description: string | null;
+  }>(
+    `select ((occurred_at + interval '1 hour')::date)::text as day, amount_minor, bank_reference,
+       bank_description
+       from transactions
+      where account_id = $1::uuid and not is_fee
+        and (occurred_at + interval '1 hour')::date between $2::date and $3::date`,
+    [accountId, days[0], days.at(-1)],
+  );
+  for (const row of existing) {
+    const key = `${row.day}|${Number(row.amount_minor)}`;
+    const entry = {
+      reference: row.bank_reference,
+      description: comparable(row.bank_description),
+      claimed: false,
+    };
+    entries.set(key, [...(entries.get(key) ?? []), entry]);
+  }
+  return entries;
+}
+
 /**
- * A row already in the ledger: same account, amount and day, and then
+ * Whether the row is already in the ledger: same account, amount and day, and then
  * - the same reference when both sides have one, else
  * - one description contained in the other once whitespace and case are ignored. Statements
  *   often carry a shortened form of the alert's narration ("WEB PUR SAMPLE CLOUD" against
  *   "WEB PUR SAMPLE CLOUD A1B2C3 CC …"), so equality alone misses real duplicates.
  * - a row with no description at all is taken as a duplicate of the same-day, same-amount entry.
+ *
+ * Each ledger entry can be claimed by one row only, and rows are compared with the ledger as it
+ * was before this import. So two identical rows in one statement are two transactions the first
+ * time, and both are skipped when the same statement is imported again.
  */
-async function isDuplicate(db: Db, accountId: string, row: MappedRow): Promise<boolean> {
-  const description = (row.description ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
-  const rows = await db.query(
-    `select 1 from transactions t,
-       lateral (select lower(regexp_replace(coalesce(t.bank_description, ''), '\\s+', ' ', 'g')) as text) d
-      where t.account_id = $1::uuid and t.amount_minor = $2 and not t.is_fee
-        and (t.occurred_at + interval '1 hour')::date = $3::date
-        and case
-              when $4::text is not null and t.bank_reference is not null then t.bank_reference = $4
-              when $5::text = '' then true
-              else d.text <> '' and (position($5 in d.text) > 0 or position(d.text in $5) > 0)
-            end
-      limit 1`,
-    [accountId, row.amountMinor, lagosDay(row.occurredAt), row.reference, description],
-  );
-  return rows.length > 0;
+function claimMatch(ledger: Map<string, LedgerEntry[]>, row: MappedRow): boolean {
+  const description = comparable(row.description);
+  const candidates = ledger.get(`${lagosDay(row.occurredAt)}|${row.amountMinor}`) ?? [];
+  const match = candidates.find((entry) => {
+    if (entry.claimed) return false;
+    if (row.reference !== null && entry.reference !== null)
+      return entry.reference === row.reference;
+    if (description === '') return true;
+    return (
+      entry.description !== '' &&
+      (entry.description.includes(description) || description.includes(entry.description))
+    );
+  });
+  if (!match) return false;
+  match.claimed = true;
+  return true;
+}
+
+function comparable(description: string | null): string {
+  return (description ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 export type { Table };

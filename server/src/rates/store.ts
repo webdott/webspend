@@ -22,6 +22,27 @@ export async function rateFor(db: Db, currency: Currency, day: string): Promise<
   return row ? decimal(row.per_usd) : null;
 }
 
+type DatedRate = { day: string; perUsd: number };
+
+/** Every stored rate for `currency` up to `day`, oldest first, to look up many days at once. */
+export async function ratesUpTo(db: Db, currency: Currency, day: string): Promise<DatedRate[]> {
+  const rows = await db.query<{ day: string; per_usd: string }>(
+    `select day::text as day, per_usd from fx_rates
+      where currency = $1 and day <= $2::date
+      order by day`,
+    [currency, day],
+  );
+  return rows.map((row) => ({ day: row.day, perUsd: decimal(row.per_usd) ?? 0 }));
+}
+
+/** The same nearest-earlier-day rule as `rateFor`, over rates from `ratesUpTo`. */
+export function rateOnOrBefore(rates: DatedRate[], day: string): number | null {
+  for (let index = rates.length - 1; index >= 0; index -= 1) {
+    if (rates[index]!.day <= day) return rates[index]!.perUsd;
+  }
+  return null;
+}
+
 export async function ratesOn(db: Db, day: string): Promise<FxRate[]> {
   const rows = await db.query<{ day: string; currency: string; per_usd: string; source: string }>(
     `select distinct on (currency) day::text as day, currency, per_usd, source

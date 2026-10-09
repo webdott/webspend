@@ -39,6 +39,15 @@ export async function rememberedCategory(
   return row ? row.category_id : null;
 }
 
+/** Every remembered category by payee key, to categorise many rows at once. */
+export async function rememberedCategories(db: Db, userId: string): Promise<Map<string, string>> {
+  const rows = await db.query<{ payee_key: string; category_id: string }>(
+    'select payee_key, category_id from payee_rules where user_id = $1',
+    [userId],
+  );
+  return new Map(rows.map((row) => [row.payee_key, row.category_id]));
+}
+
 export async function rememberCategory(
   db: Db,
   userId: string,

@@ -150,20 +150,6 @@ export async function listTrackedAccountsOfBank(
   return rows.map(toAccount);
 }
 
-export async function stampBalance(
-  db: Db,
-  accountId: string,
-  balanceMinor: number,
-  at: string,
-): Promise<void> {
-  await db.query(
-    `update accounts set last_balance_minor = $2, last_balance_at = $3::timestamptz,
-       last_alert_at = greatest(coalesce(last_alert_at, $3::timestamptz), $3::timestamptz)
-     where id = $1::uuid`,
-    [accountId, balanceMinor, at],
-  );
-}
-
 export async function stampLastAlert(db: Db, accountId: string, at: string): Promise<void> {
   await db.query(
     `update accounts set last_alert_at = greatest(coalesce(last_alert_at, $2::timestamptz), $2::timestamptz)
@@ -178,13 +164,21 @@ export async function stampLastAlert(db: Db, accountId: string, at: string): Pro
  * other ends with its visible digits, which must be at least four.
  */
 export function accountNumbersMatch(a: string | null, b: string | null): boolean {
-  if (!a || !b) return false;
+  return accountNumberMatch(a, b) !== null;
+}
+
+/** How two account numbers match: every digit (`full`), only the visible tail of a masked one, or not at all. */
+export function accountNumberMatch(
+  a: string | null,
+  b: string | null,
+): 'full' | 'last-digits' | null {
+  if (!a || !b) return null;
   const first = visibleDigits(a);
   const second = visibleDigits(b);
-  if (!first.masked && !second.masked) return first.digits === second.digits;
+  if (!first.masked && !second.masked) return first.digits === second.digits ? 'full' : null;
   const shorter = first.digits.length <= second.digits.length ? first.digits : second.digits;
   const longer = shorter === first.digits ? second.digits : first.digits;
-  return shorter.length >= 4 && longer.endsWith(shorter);
+  return shorter.length >= 4 && longer.endsWith(shorter) ? 'last-digits' : null;
 }
 
 function visibleDigits(value: string): { digits: string; masked: boolean } {

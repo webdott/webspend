@@ -43,7 +43,6 @@ All variables are optional for local use. See `.env.example` for the full list w
 | `POLL_INTERVAL_SECONDS`                    | `60`                            | Gmail poll interval.                                                  |
 | `RATE_SOURCE`                              | `open-er-api`                   | `open-er-api` (no key) or `fixed`.                                    |
 | `FIXED_RATES`                              | unset                           | `NGN:1500,GBP:0.78,EUR:0.92`, units per US dollar, for `fixed`.       |
-| `FEE_THRESHOLD_MINOR`                      | `50000`                         | A balance drop up to this (₦500) is logged as a fee; more is a gap.   |
 
 With `NODE_ENV=production` the server also serves `../web/dist` with an SPA fallback when it exists.
 
@@ -57,7 +56,7 @@ src/
   auth/            sessions (hashed tokens), Google OAuth, dev sign-in
   alerts/          one parser per bank; parseAlert(email) → ParsedAlert or a reason
   intake/          pipeline (email → raw_alerts row → transaction), Gmail client, poller, html→text
-  ledger/          repositories (accounts, categories, transactions, gaps, payees, users),
+  ledger/          repositories (accounts, categories, transactions, payees, users),
                    recordTransaction and the rules under ledger/rules/
   import/          CSV and JSON reading, mapping suggestion, date parsing, commit
   rates/           rate sources and the fx_rates store
@@ -75,17 +74,14 @@ src/
    text is kept so the parser can be fixed and re-run), or `before_tracking_from`.
 3. `parseAlert` picks the parser by sender address and returns amount, time, account, balance
    after, counterparty, description and reference.
-4. The account is the tracked one at that bank whose number matches the alert's (masked suffixes
-   are fine), else the only tracked account at that bank. Alerts older than its `tracking_from`
+4. The alert is logged under a tracked account at that bank: the one whose number matches the
+   alert's (masked suffixes are fine), else the first. Alerts older than its `tracking_from`
    are ignored; the past is never read.
 5. `recordTransaction` inserts the row with the day's exchange rate and applies the rules:
    - remembered category for the payee;
    - transfer to self: own account number named in the alert, same bank reference on both legs,
      equal and opposite amount within 15 minutes, or Grey dollars arriving as naira within a day
-     (the shortfall against the official rate is logged as "Exchange loss & fees");
-   - balance check: the first alert after tracking starts sets the opening balance; afterwards a
-     balance that moved by more than the alert's amount is a bank fee (small drop) or a gap for a
-     statement import (anything else).
+     (the shortfall against the official rate is logged as "Exchange loss & fees").
 
 Transfers to self never count in totals. Imports and manual entries go through the same
 `recordTransaction`, so the same pairing applies to them (manual entries keep the type the user

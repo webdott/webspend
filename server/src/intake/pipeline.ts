@@ -62,7 +62,7 @@ export async function processAlertEmail(
   if (!account) {
     return store(db, email, {
       status: 'before_tracking_from',
-      detail: `no tracked ${alert.bank} account matches ${alert.account ?? 'this alert'}`,
+      detail: `no ${alert.bank} account is tracked`,
       parsed: alert,
     });
   }
@@ -105,14 +105,14 @@ export async function processAlertEmail(
 }
 
 /**
- * The tracked account the alert belongs to: the one whose number matches the alert's (masked is
- * fine), else the only tracked account at that bank. OPay alerts carry no account number.
+ * The tracked account the alert is logged under. Every alert in the mailbox is the user's, so
+ * knowing the bank is enough: the account whose number matches is preferred, else the bank's
+ * first tracked account. Null only when no account at that bank is tracked.
  */
 async function findTrackedAccount(db: Db, userId: string, alert: ParsedAlert) {
   const candidates = await listTrackedAccountsOfBank(db, userId, alert.bank);
   const byNumber = candidates.find((a) => accountNumbersMatch(alert.account, a.accountNumber));
-  if (byNumber) return byNumber;
-  return candidates.length === 1 ? candidates[0]! : null;
+  return byNumber ?? candidates[0] ?? null;
 }
 
 async function store(

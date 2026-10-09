@@ -31,7 +31,7 @@ export function startPoller(db: Db, config: Config, options: PollerOptions = {})
     if (running) return;
     running = true;
     try {
-      await pollAll(db, mailboxFor, config, options.rateSource ?? null);
+      await pollAll(db, mailboxFor, options.rateSource ?? null);
     } catch (error) {
       console.error('poller:', error);
     } finally {
@@ -47,12 +47,11 @@ export function startPoller(db: Db, config: Config, options: PollerOptions = {})
 export async function pollAll(
   db: Db,
   mailboxFor: (userId: string) => MailboxSource,
-  config: Pick<Config, 'feeThresholdMinor'>,
   rateSource: RateSource | null,
 ): Promise<void> {
   for (const user of await listPollableUsers(db)) {
     try {
-      await pollUser(db, user, mailboxFor(user.id), config, rateSource);
+      await pollUser(db, user, mailboxFor(user.id), rateSource);
       await db.query(
         'update mailbox_tokens set last_polled_at = now(), last_error = null where user_id = $1',
         [user.id],
@@ -72,7 +71,6 @@ async function pollUser(
   db: Db,
   user: User,
   mailbox: MailboxSource,
-  config: Pick<Config, 'feeThresholdMinor'>,
   rateSource: RateSource | null,
 ): Promise<void> {
   const userId = user.id;
@@ -88,11 +86,6 @@ async function pollUser(
   for (const id of ids) {
     if (seen.has(id)) continue;
     const message = await mailbox.fetchMessage(id);
-    await processAlertEmail(
-      db,
-      user,
-      { userId, ...message },
-      { rateSource, feeThresholdMinor: config.feeThresholdMinor },
-    );
+    await processAlertEmail(db, user, { userId, ...message }, { rateSource });
   }
 }

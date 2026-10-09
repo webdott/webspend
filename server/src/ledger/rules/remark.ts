@@ -1,6 +1,7 @@
 /**
  * Rule 4, re-marking. The user can call any transaction an expense, an income or a transfer to
  * self. Moving to or from `transfer` also updates the paired leg so a group is never half open.
+ * Any re-mark, even to the type it already has, is the user's answer and clears the unsure tag.
  */
 import type { TransactionType } from '@webspend/shared';
 import type { Db } from '../../db/index.ts';
@@ -20,6 +21,10 @@ export async function remarkTransaction(
   ]);
   if (!row) throw new NotFoundError('transaction not found');
   const leg = toLeg(row);
+  await db.query(
+    'update transactions set unsure_transfer = false where user_id = $1 and id = $2::uuid',
+    [userId, id],
+  );
   if (leg.type === type) return;
 
   if (type === 'transfer') {

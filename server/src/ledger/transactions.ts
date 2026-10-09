@@ -30,7 +30,7 @@ export const TRANSACTION_SELECT = `
     t.account_id, a.name as account_name, a.bank, t.counterparty_name, t.counterparty_bank,
     t.counterparty_account, t.bank_description, t.user_description, t.category_id,
     c.name as category_name, t.source, t.bank_reference, t.transfer_group_id, t.is_fee,
-    t.created_at, t.payee_key, t.balance_after_minor,
+    t.created_at, t.payee_key, t.balance_after_minor, t.unsure_transfer,
     $2::text as default_currency,
     ${USD_MINOR} as usd_minor,
     case when t.currency = $2::text then t.amount_minor
@@ -78,6 +78,7 @@ export function toTransaction(row: Row): Transaction {
     bankReference: text(row.bank_reference),
     transferGroupId: text(row.transfer_group_id),
     isFee: Boolean(row.is_fee),
+    unsureTransfer: Boolean(row.unsure_transfer),
     createdAt: iso(row.created_at),
   };
 }
@@ -90,6 +91,7 @@ export type TransactionFilters = {
   categoryId?: string;
   accountId?: string;
   type?: TransactionType;
+  unsure?: boolean;
   limit?: number;
   before?: string;
 };
@@ -114,6 +116,7 @@ export async function listTransactions(
        and ($7::text is null or t.account_id::text = $7)
        and ($8::text is null or t.type = $8)
        and ($9::timestamptz is null or t.occurred_at < $9::timestamptz)
+       and (not $11::boolean or t.unsure_transfer)
      order by t.occurred_at desc, t.created_at desc, t.id desc
      limit $10`,
     [
@@ -127,6 +130,7 @@ export async function listTransactions(
       filters.type ?? null,
       filters.before ?? null,
       limit + 1,
+      filters.unsure ?? false,
     ],
   );
   const page = rows.slice(0, limit);

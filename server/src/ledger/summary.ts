@@ -2,7 +2,6 @@ import type { Bank, CategoryTotal, Summary, User } from '@webspend/shared';
 import type { Db } from '../db/index.ts';
 import { isoOrNull } from '../db/rows.ts';
 import { rateFor } from '../rates/store.ts';
-import { countOpenGaps } from './gaps.ts';
 import { monthRange, todayLagos } from './time.ts';
 import { TRANSACTION_SELECT } from './transactions.ts';
 
@@ -94,7 +93,6 @@ export async function monthSummary(db: Db, user: User, month: string): Promise<S
     todayPerUsd,
     byCategory,
     uncategorisedCount: Number(totals?.uncategorised ?? 0),
-    openGapCount: await countOpenGaps(db, user.id),
     lastAlertAt: isoOrNull(latest?.last_alert_at),
     trackedBanks: (latest?.banks ?? []) as Bank[],
   };

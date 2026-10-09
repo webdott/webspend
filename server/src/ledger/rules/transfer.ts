@@ -2,14 +2,17 @@
  * Rule 2, transfer to self. Money moving between the user's own accounts is not spending, so a
  * debit in one own account and the matching credit in another become one transfer group.
  *
- * Checks run in order of confidence: the alert names one of the user's own account numbers,
- * then the same bank reference on both legs, then an equal and opposite amount minutes apart,
- * then Grey's dollar-to-naira conversion where the amounts differ by the day's rate.
+ * Checks run in order of confidence: the alert names one of the user's own account numbers in
+ * full, then the same bank reference on both legs, then an equal and opposite amount minutes
+ * apart, then Grey's dollar-to-naira conversion where the amounts differ by the day's rate.
+ *
+ * A masked number that only matches an own account by its last digits proves nothing by itself:
+ * the transaction keeps its type and is tagged unsure for the user to confirm.
  */
 import { randomUUID } from 'node:crypto';
 import type { User } from '@webspend/shared';
 import type { Db } from '../../db/index.ts';
-import { accountNumbersMatch, bankCodeFromLabel, listOwnAccounts } from '../accounts.ts';
+import { accountNumberMatch, bankCodeFromLabel, listOwnAccounts } from '../accounts.ts';
 import { ensureCategory } from '../categories.ts';
 import { rateFor } from '../../rates/store.ts';
 import { lagosDay } from '../time.ts';
@@ -48,11 +51,17 @@ export async function detectTransfer(
   const ownAccounts = (await listOwnAccounts(db, user.id)).filter((a) => a.id !== leg.accountId);
 
   const counterpartyBank = bankCodeFromLabel(leg.counterpartyBank);
-  const ownCounterparty = ownAccounts.find(
-    (account) =>
-      accountNumbersMatch(leg.counterpartyAccount, account.accountNumber) &&
-      (counterpartyBank === null || counterpartyBank === account.bank),
-  );
+  const matches = ownAccounts
+    .filter((account) => counterpartyBank === null || counterpartyBank === account.bank)
+    .map((account) => ({
+      account,
+      kind: accountNumberMatch(leg.counterpartyAccount, account.accountNumber),
+    }));
+  const ownCounterparty = (
+    matches.find((match) => match.kind === 'full') ??
+    matches.find((match) => match.kind === 'last-digits')
+  )?.account;
+  const confirmedOwn = matches.some((match) => match.kind === 'full');
 
   const partner =
     (await partnerByReference(db, user.id, leg)) ??
@@ -63,7 +72,7 @@ export async function detectTransfer(
     const feeId = await logExchangeLoss(db, user, leg, partner, recordFee);
     return { paired: true, groupId, partnerId: partner.id, feeId };
   }
-  if (ownCounterparty) {
+  if (confirmedOwn) {
     const groupId = leg.transferGroupId ?? randomUUID();
     await markTransfer(db, [leg.id], groupId);
     return { paired: true, groupId, partnerId: null, feeId: null };
@@ -72,10 +81,60 @@ export async function detectTransfer(
   // (d) Grey converting dollars to naira: the amounts differ by the rate, and the shortfall
   // against the official rate is the fee and exchange loss, logged as an expense.
   const partnerByRate = await greyConversion(db, user.id, leg);
-  if (!partnerByRate) return { paired: false };
+  if (!partnerByRate) {
+    if (ownCounterparty) await tagUnsure(db, leg.id);
+    return { paired: false };
+  }
   const groupId = await pair(db, leg, partnerByRate);
   const feeId = await logExchangeLoss(db, user, leg, partnerByRate, recordFee);
   return { paired: true, groupId, partnerId: partnerByRate.id, feeId };
+}
+
+/**
+ * The unpaired legs in the user's other own accounts that legs dated within `window` could pair
+ * with. Loaded once for a batch so `couldPair` can rule most rows out without a query each.
+ */
+export async function pairingCandidates(
+  db: Db,
+  userId: string,
+  accountId: string,
+  window: { from: string; to: string },
+): Promise<Leg[]> {
+  const rows = await db.query(
+    `${LEG_SELECT}
+     where o.user_id = $1 and o.account_id <> $2::uuid and oa.is_own and not o.is_fee
+       and o.occurred_at between $3::timestamptz - make_interval(days => $5)
+                             and $4::timestamptz + make_interval(days => $5)
+       and ${UNPAIRED}`,
+    [userId, accountId, window.from, window.to, REFERENCE_WINDOW_DAYS],
+  );
+  return rows.map(toLeg);
+}
+
+/**
+ * Whether any candidate is close enough for `detectTransfer` to be worth running. Deliberately
+ * looser than the real checks (it ignores which bank a dollar leg came from), so it can only
+ * cause an unnecessary query, never a missed pair.
+ */
+export function couldPair(
+  leg: Pick<Leg, 'direction' | 'amountMinor' | 'currency' | 'occurredAt' | 'bankReference'>,
+  candidates: Leg[],
+): boolean {
+  const at = Date.parse(leg.occurredAt);
+  return candidates.some((candidate) => {
+    if (candidate.direction === leg.direction) return false;
+    const minutesApart = Math.abs(Date.parse(candidate.occurredAt) - at) / 60_000;
+    const sameReference =
+      leg.bankReference !== null && candidate.bankReference === leg.bankReference;
+    const sameAmount =
+      candidate.currency === leg.currency && candidate.amountMinor === leg.amountMinor;
+    const conversion = candidate.currency !== leg.currency;
+    return (
+      (sameReference && minutesApart <= REFERENCE_WINDOW_DAYS * 1440) ||
+      (sameAmount && minutesApart <= PAIR_WINDOW_MINUTES) ||
+      (conversion && minutesApart <= GREY_WINDOW_HOURS * 60)
+    );
+  });
 }
 
 /**
@@ -130,10 +189,15 @@ async function pair(db: Db, leg: Leg, partner: Leg): Promise<string> {
 
 async function markTransfer(db: Db, ids: string[], groupId: string): Promise<void> {
   await db.query(
-    `update transactions set type = 'transfer', transfer_group_id = $2::uuid, category_id = null
+    `update transactions set type = 'transfer', transfer_group_id = $2::uuid, category_id = null,
+       unsure_transfer = false
      where id = any($1::uuid[])`,
     [ids, groupId],
   );
+}
+
+async function tagUnsure(db: Db, id: string): Promise<void> {
+  await db.query('update transactions set unsure_transfer = true where id = $1::uuid', [id]);
 }
 
 /** (b) The same bank reference on an opposite leg in another own account within seven days. */

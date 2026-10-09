@@ -19,8 +19,6 @@ export type Config = {
   pollIntervalSeconds: number;
   rateSource: RateSourceName;
   fixedRates: Partial<Record<Currency, number>>;
-  /** A balance drop up to this size (minor units) is logged as a fee instead of a gap. */
-  feeThresholdMinor: number;
   production: boolean;
 };
 
@@ -44,7 +42,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     pollIntervalSeconds: integer(env.POLL_INTERVAL_SECONDS, 60),
     rateSource: env.RATE_SOURCE === 'fixed' ? 'fixed' : 'open-er-api',
     fixedRates: parseFixedRates(env.FIXED_RATES),
-    feeThresholdMinor: integer(env.FEE_THRESHOLD_MINOR, 50_000),
     production,
   };
 }

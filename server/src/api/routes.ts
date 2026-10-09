@@ -8,7 +8,6 @@ import {
   createCategorySchema,
   createTransactionSchema,
   daySchema,
-  type GapsResponse,
   type ImportCommitRequest,
   importCommitSchema,
   importPreviewSchema,
@@ -22,7 +21,6 @@ import {
   type UpdateSettingsRequest,
   updateAccountSchema,
   updateCategorySchema,
-  updateGapSchema,
   updateSettingsSchema,
   updateTransactionSchema,
 } from '@webspend/shared';
@@ -44,7 +42,6 @@ import {
   listCategories,
   updateCategory,
 } from '../ledger/categories.ts';
-import { getGap, listGaps, setGapStatus } from '../ledger/gaps.ts';
 import {
   categoriseUncategorisedOfPayee,
   forgetPayee,
@@ -72,7 +69,7 @@ type Deps = { db: Db; config: Config; rateSource: RateSource };
 
 export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
   const api = new Hono<AppEnv>();
-  const recordOptions = { rateSource, feeThresholdMinor: config.feeThresholdMinor };
+  const recordOptions = { rateSource };
   const transactionId = (value: string) => requireUuid(value, 'transaction');
 
   api.get('/me', (c) => {
@@ -117,6 +114,7 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
       categoryId: q.categoryId,
       accountId: q.accountId,
       type: q.type as TransactionType | undefined,
+      unsure: q.unsure === 'true',
       limit,
       before: q.before,
     });
@@ -237,25 +235,6 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
     return c.body(null, 204);
   });
 
-  api.get('/gaps', async (c) => {
-    const status = c.req.query('status');
-    if (status && !['open', 'filled', 'dismissed'].includes(status)) {
-      throw new HttpError(400, 'invalid_request', 'status must be open, filled or dismissed');
-    }
-    const body: GapsResponse = {
-      gaps: await listGaps(db, c.get('user').id, (status as 'open' | undefined) ?? null),
-    };
-    return c.json(body);
-  });
-  api.get('/gaps/:id', async (c) =>
-    c.json({ gap: await getGap(db, c.get('user').id, requireUuid(c.req.param('id'), 'gap')) }),
-  );
-  api.patch('/gaps/:id', async (c) => {
-    const { status } = await parseBody(c, updateGapSchema);
-    const id = requireUuid(c.req.param('id'), 'gap');
-    return c.json({ gap: await setGapStatus(db, c.get('user').id, id, status) });
-  });
-
   api.get('/alerts', async (c) => {
     const filter = c.req.query('status') === 'failed' ? 'failed' : 'all';
     const body: AlertsResponse = { alerts: await listAlerts(db, c.get('user').id, filter) };
@@ -288,7 +267,6 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
     const user = c.get('user');
     const input = (await parseBody(c, importCommitSchema)) as ImportCommitRequest;
     requireUuid(input.accountId, 'account');
-    if (input.gapId) requireUuid(input.gapId, 'gap');
     return c.json(await commitImport(db, user, input, recordOptions));
   });
 

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { listGaps } from './gaps.ts';
 import { rememberCategory } from './payees.ts';
 import { recordTransaction } from './record.ts';
 import { remarkTransaction } from './rules/remark.ts';
@@ -101,17 +100,47 @@ test('duplicates and unauthenticated mail never reach the ledger', async () => {
   assert.equal((await listTransactions(db, user, {})).transactions.length, 1);
 });
 
-test('a debit to one of my own accounts (masked) is a transfer, and its credit joins it', async () => {
+test('a full account number of mine makes a transfer; a last-digits match is only tagged unsure', async () => {
+  const { db, user, accounts, send } = await fixture({ numbers: { gtbank: '0123400001' } });
+  const own = await recordTransaction(db, user, {
+    accountId: accounts.opay!.id,
+    occurredAt: '2026-10-01T09:00:00+01:00',
+    type: 'expense',
+    amountMinor: 500_000,
+    currency: 'NGN',
+    counterpartyBank: 'Guaranty Trust Bank',
+    counterpartyAccount: '0123400001',
+    source: 'alert',
+  });
+  assert.equal(own.transaction.type, 'transfer');
+  assert.equal(own.transaction.unsureTransfer, false);
+
   // The Moniepoint alert names GTBank *****00001; the GTBank account ends with those digits.
-  const { db, user, send } = await fixture({ numbers: { gtbank: '0123400001' } });
   const debit = await send({
     from: SENDERS.moniepoint,
     subject: 'Debit alert!',
     text: sample('moniepoint-debit'),
   });
   const leg1 = await getTransaction(db, user, debit.transactionId!);
-  assert.equal(leg1.type, 'transfer');
-  assert.ok(leg1.transferGroupId);
+  assert.equal(leg1.type, 'expense');
+  assert.equal(leg1.unsureTransfer, true);
+  assert.deepEqual(
+    (await listTransactions(db, user, { unsure: true })).transactions.map((t) => t.id),
+    [leg1.id],
+  );
+
+  await remarkTransaction(db, user.id, leg1.id, 'expense');
+  assert.equal((await getTransaction(db, user, leg1.id)).unsureTransfer, false);
+});
+
+test('an unsure debit becomes a transfer when its credit arrives in my other account', async () => {
+  const { db, user, send } = await fixture({ numbers: { gtbank: '0123400001' } });
+  const debit = await send({
+    from: SENDERS.moniepoint,
+    subject: 'Debit alert!',
+    text: sample('moniepoint-debit'),
+  });
+  assert.equal((await getTransaction(db, user, debit.transactionId!)).unsureTransfer, true);
 
   const credit = await send({
     from: SENDERS.gtbank,
@@ -122,7 +151,10 @@ test('a debit to one of my own accounts (masked) is a transfer, and its credit j
       '5:56:38 PM': '4:00:40 PM',
     }),
   });
+  const leg1 = await getTransaction(db, user, debit.transactionId!);
   const leg2 = await getTransaction(db, user, credit.transactionId!);
+  assert.equal(leg1.type, 'transfer');
+  assert.equal(leg1.unsureTransfer, false);
   assert.equal(leg2.type, 'transfer');
   assert.equal(leg2.transferGroupId, leg1.transferGroupId);
 });
@@ -147,58 +179,21 @@ test('an equal and opposite amount minutes apart pairs into one transfer', async
   assert.ok(leg1.transferGroupId);
 });
 
-test('balance check: a small drop is a fee, a big one is a gap, out of order is skipped', async () => {
+test('an alert is logged under its bank even when two accounts there are tracked', async () => {
   const { db, user, accounts, send } = await fixture();
-  // Opening balance ₦106,716.47 after a ₦50,000 transfer.
-  await send({ from: SENDERS.opay, subject: 'Transfer Successful', text: sample('opay-transfer') });
-
-  // ₦2,413 payment, balance ₦50 lower than expected: a fee.
-  const feeAlert = await send({
-    from: SENDERS.opay,
-    subject: 'Payment Successful',
-    text: alter(sample('opay-payment'), {
-      '₦24,041.34': '₦104,253.47',
-      'Sep 28th, 2026 13:41:55': 'Sep 20th, 2026 09:00:00',
-      '260928140300000000000002': '260920090000000000000002',
-    }),
-  });
-  assert.equal(feeAlert.status, 'parsed');
-  const fees = (await listTransactions(db, user, {})).transactions.filter((t) => t.isFee);
-  assert.equal(fees.length, 1);
-  assert.equal(fees[0]!.amountMinor, 5_000);
-  assert.equal(fees[0]!.type, 'expense');
-  assert.equal(fees[0]!.categoryName, 'Fees');
-  assert.equal(fees[0]!.title, 'Bank fee');
-
-  // Another ₦2,413 payment but the balance is ₦80,000 lower than expected: a gap.
-  await send({
-    from: SENDERS.opay,
-    subject: 'Payment Successful',
-    text: alter(sample('opay-payment'), {
-      '₦24,041.34': '₦24,040.47',
-      'Sep 28th, 2026 13:41:55': 'Sep 21st, 2026 09:00:00',
-      '260928140300000000000002': '260921090000000000000003',
-    }),
-  });
-  const gaps = await listGaps(db, user.id, 'open');
-  assert.equal(gaps.length, 1);
-  assert.equal(gaps[0]!.accountId, accounts.opay!.id);
-  assert.equal(gaps[0]!.expectedBalanceMinor, 10_425_347 - 241_300);
-  assert.equal(gaps[0]!.actualBalanceMinor, 2_404_047);
-  assert.equal(gaps[0]!.differenceMinor, 2_404_047 - (10_425_347 - 241_300));
-  assert.equal(gaps[0]!.fromAt, new Date('2026-09-20T09:00:00+01:00').toISOString());
-
-  // The original Sep 19 payment sample arrives late: older than the last balance, so no check.
-  await send({
-    from: SENDERS.opay,
-    subject: 'Payment Successful',
-    text: alter(sample('opay-payment'), { 'Sep 28th, 2026 13:41:55': 'Sep 19th, 2026 23:00:00' }),
-  });
-  assert.equal((await listGaps(db, user.id, 'open')).length, 1);
-  assert.equal(
-    (await listTransactions(db, user, {})).transactions.filter((t) => t.isFee).length,
-    1,
+  await db.query(
+    `insert into accounts (user_id, bank, name, tracked, tracking_from)
+     values ($1, 'opay', 'OPay business', true, '2026-09-01T00:00:00+01:00')`,
+    [user.id],
   );
+  const alert = await send({
+    from: SENDERS.opay,
+    subject: 'Transfer Successful',
+    text: sample('opay-transfer'),
+  });
+  assert.equal(alert.status, 'parsed');
+  const logged = await getTransaction(db, user, alert.transactionId!);
+  assert.equal(logged.accountId, accounts.opay!.id);
 });
 
 test('a remembered category is applied to the next alert from that payee', async () => {
