@@ -57,6 +57,23 @@ struct PhoneTabs: View {
         }
         .toolbarBackground(WS.card, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .overlay(alignment: .bottomTrailing) {
+            Button { store.isAddingTransaction = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(WS.onAccent)
+                    .frame(width: 56, height: 56)
+                    .background(WS.accent, in: Circle())
+                    .shadow(color: WS.accent.opacity(0.45), radius: 12, y: 6)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add a transaction")
+            .padding(.trailing, 18)
+            .padding(.bottom, 66)
+        }
+        .sheet(isPresented: Binding(get: { store.isAddingTransaction }, set: { store.isAddingTransaction = $0 })) {
+            AddTransactionSheet().environment(store)
+        }
     }
 }
 #else
@@ -102,6 +119,17 @@ struct MacShell: View {
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
+                            store.isAddingTransaction = true
+                        } label: {
+                            Label("Add", systemImage: "plus")
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .buttonStyle(.borderedProminent)
+                        .tint(WS.accent)
+                        .help("Add a transaction")
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
                             Task { await store.refreshAll() }
                         } label: {
                             Label("Refresh", systemImage: "arrow.clockwise")
@@ -111,6 +139,9 @@ struct MacShell: View {
                 }
         }
         .navigationSplitViewStyle(.balanced)
+        .sheet(isPresented: $store.isAddingTransaction) {
+            AddTransactionSheet().environment(store)
+        }
     }
 
     @ViewBuilder private var detail: some View {

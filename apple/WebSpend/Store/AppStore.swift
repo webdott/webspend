@@ -66,6 +66,8 @@ final class AppStore {
     var rates: [FxRate] = []
 
     var macSection: MacSection = .summary
+    /// Shows the add-a-transaction sheet. Set from any screen's Add button.
+    var isAddingTransaction = false
 
     init() {
         let url = SessionStorage.serverURL
@@ -373,6 +375,26 @@ final class AppStore {
         replace(updated)
         Task { await loadSummary() }
         return updated
+    }
+
+    /// Records a transaction entered by hand and returns the account it went on. A nil
+    /// `accountId` means cash: the Cash account is used, and created if there is none yet.
+    @discardableResult
+    func addTransaction(accountId: String?, occurredAt: String, type: TransactionType, amountMinor: Int, description: String, categoryId: String?) async throws -> String {
+        let account: Account
+        if let accountId, let known = accounts.value?.first(where: { $0.id == accountId }) {
+            account = known
+        } else if let cash = accounts.value?.first(where: { $0.bank == .cash }) {
+            account = cash
+        } else {
+            account = try await api.createAccount(CreateAccountRequest(bank: .cash, name: "Cash", accountNumber: nil, currency: defaultCurrency, isOwn: true))
+        }
+        _ = try await api.createTransaction(CreateTransactionRequest(accountId: account.id, occurredAt: occurredAt, type: type, amountMinor: amountMinor, currency: account.currency, userDescription: description, categoryId: categoryId))
+        async let a: Void = loadSummary()
+        async let b: Void = loadTransactions()
+        async let c: Void = loadAccounts()
+        _ = await (a, b, c)
+        return account.id
     }
 
     func deleteTransaction(id: String) async throws {
