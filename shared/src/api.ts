@@ -405,4 +405,34 @@ export type IntakeEmailRequest = {
 };
 export type IntakeEmailResponse = { alert: RawAlert };
 
+// Export ----------------------------------------------------------------------------------------
+
+export type ExportFormat = 'csv' | 'pdf';
+
+/**
+ * GET /api/exports?format=csv|pdf&from=YYYY-MM-DD&to=YYYY-MM-DD
+ *   &accountId=id&categoryId=id|none&type=expense|income|transfer
+ *
+ * Downloads the transactions between `from` and `to`, Lagos calendar days, both inclusive. `to`
+ * defaults to today and `from` to the first day of `to`'s month. The reply is the file itself,
+ * with `Content-Disposition: attachment; filename="webspend-<from>-to-<to>.<format>"`.
+ *
+ * CSV: UTF-8 with a byte-order mark so spreadsheets read the naira sign. One row per transaction,
+ * newest first. Columns: Date, Time, Type, Title, Description, Category, Account, Bank, Amount,
+ * Currency, Amount in the default currency, USD equivalent, Counterparty, Reference, Source.
+ * Amounts are plain decimals (18500.00); expenses negative, income positive, transfers to self
+ * unsigned.
+ *
+ * PDF: the same rows as a table, with the range's spent, income and net totals at the top.
+ * Transfers to self are listed but left out of the totals.
+ */
+export type ExportQuery = {
+  format: ExportFormat;
+  from?: string;
+  to?: string;
+  accountId?: string;
+  categoryId?: string;
+  type?: TransactionType;
+};
+
 export type ApiError = { error: { code: string; message: string } };

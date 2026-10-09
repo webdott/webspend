@@ -28,6 +28,25 @@ export function monthRange(month: string): { start: string; end: string } {
   };
 }
 
+/** The Lagos wall-clock time of an instant, `HH:MM`. */
+export function lagosClock(iso: string): string {
+  return new Date(Date.parse(iso) + HOUR_MS).toISOString().slice(11, 16);
+}
+
+export function nextDay(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Inclusive Lagos days `from`..`to` as the half-open window `[start, end)`. Either end may be open. */
+export function dayRange(from?: string, to?: string): { start: string | null; end: string | null } {
+  return {
+    start: from ? `${from}T00:00:00${LAGOS_OFFSET}` : null,
+    end: to ? `${nextDay(to)}T00:00:00${LAGOS_OFFSET}` : null,
+  };
+}
+
 export function currentMonth(now: Date = new Date()): string {
   return lagosDay(now).slice(0, 7);
 }

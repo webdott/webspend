@@ -91,4 +91,17 @@ export const intakeEmailSchema = z.object({
   authenticated: z.boolean(),
 });
 
+export const exportQuerySchema = z
+  .object({
+    format: z.enum(['csv', 'pdf']),
+    from: daySchema.optional(),
+    to: daySchema.optional(),
+    accountId: z.string().optional(),
+    categoryId: z.string().optional(),
+    type: transactionTypeSchema.optional(),
+  })
+  .refine((query) => !query.from || !query.to || query.from <= query.to, {
+    message: 'from must not be after to',
+  });
+
 export const trackedBanks = TRACKED_BANKS;

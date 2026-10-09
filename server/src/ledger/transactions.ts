@@ -15,7 +15,7 @@ import type {
 import type { Db, Row } from '../db/index.ts';
 import { decimal, integerOrNull, iso, text } from '../db/rows.ts';
 import { NotFoundError } from './errors.ts';
-import { monthRange } from './time.ts';
+import { dayRange, monthRange } from './time.ts';
 
 /**
  * `$1` is the user id and `$2` the user's default currency wherever this fragment is used.
@@ -89,6 +89,9 @@ export type Viewer = { id: string; defaultCurrency: Currency };
 
 export type TransactionFilters = {
   month?: string;
+  /** Inclusive Lagos days, used when `month` is not given. */
+  from?: string;
+  to?: string;
   q?: string;
   categoryId?: string;
   accountId?: string;
@@ -104,7 +107,7 @@ export async function listTransactions(
   filters: TransactionFilters,
 ): Promise<{ transactions: Transaction[]; hasMore: boolean }> {
   const limit = Math.min(Math.max(filters.limit ?? 100, 1), 500);
-  const range = filters.month ? monthRange(filters.month) : null;
+  const range = filters.month ? monthRange(filters.month) : dayRange(filters.from, filters.to);
   const rows = await db.query(
     `${TRANSACTION_SELECT}
      where t.user_id = $1
@@ -124,8 +127,8 @@ export async function listTransactions(
     [
       viewer.id,
       viewer.defaultCurrency,
-      range?.start ?? null,
-      range?.end ?? null,
+      range.start ?? null,
+      range.end ?? null,
       filters.q ? `%${escapeLike(filters.q.trim())}%` : null,
       filters.categoryId ?? null,
       filters.accountId ?? null,

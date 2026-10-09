@@ -8,6 +8,8 @@ import {
   createCategorySchema,
   createTransactionSchema,
   daySchema,
+  type ExportQuery,
+  exportQuerySchema,
   type ImportCommitRequest,
   importCommitSchema,
   importPreviewSchema,
@@ -27,6 +29,7 @@ import {
 } from '@webspend/shared';
 import type { Config } from '../config.ts';
 import type { Db } from '../db/index.ts';
+import { buildExport } from '../export/index.ts';
 import { commitImport, previewImport } from '../import/index.ts';
 import { listAlerts, processAlertEmail } from '../intake/pipeline.ts';
 import {
@@ -91,6 +94,21 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
       throw new HttpError(400, 'invalid_request', 'month must be YYYY-MM');
     }
     return c.json(await monthSummary(db, c.get('user'), month));
+  });
+
+  api.get('/exports', async (c) => {
+    const parsed = exportQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const where = issue?.path.length ? `${issue.path.join('.')}: ` : '';
+      throw new HttpError(400, 'invalid_request', `${where}${issue?.message ?? 'invalid query'}`);
+    }
+    const file = await buildExport(db, c.get('user'), parsed.data as ExportQuery);
+    c.header('Content-Type', file.contentType);
+    c.header('Content-Disposition', `attachment; filename="${file.filename}"`);
+    c.header('Cache-Control', 'no-store');
+    const { buffer, byteOffset, byteLength } = file.body;
+    return c.body(buffer.slice(byteOffset, byteOffset + byteLength) as ArrayBuffer);
   });
 
   api.get('/transactions', async (c) => {

@@ -27,7 +27,8 @@ async function client() {
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null };
   };
-  return { db, call };
+  const raw = (path: string) => app.request(path, { headers: cookie ? { cookie } : {} });
+  return { db, call, raw };
 }
 
 test('sign in, categorise, enter a transaction, read the summary, remember the payee', async () => {
@@ -172,4 +173,55 @@ test('sign in, categorise, enter a transaction, read the summary, remember the p
 
   assert.equal((await call('POST', '/auth/logout')).status, 204);
   await db.close();
+});
+
+test('exports download as a file for the days asked for, and refuse a backwards range', async () => {
+  const { call, raw } = await client();
+  await call('POST', '/auth/dev', { email: 'dev@webspend.local' });
+  const accounts = (await call('GET', '/api/accounts')).body.accounts as {
+    id: string;
+    bank: string;
+  }[];
+  const cash = accounts.find((a) => a.bank === 'cash')!;
+  for (const [occurredAt, userDescription] of [
+    ['2026-10-02T09:00:00+01:00', 'Bus fare'],
+    ['2026-10-05T18:30:00+01:00', 'Groceries'],
+    ['2026-09-28T12:00:00+01:00', 'Last month'],
+  ]) {
+    assert.equal(
+      (
+        await call('POST', '/api/transactions', {
+          accountId: cash.id,
+          occurredAt,
+          type: 'expense',
+          amountMinor: 250_000,
+          currency: 'NGN',
+          userDescription,
+        })
+      ).status,
+      201,
+    );
+  }
+
+  const csv = await raw('/api/exports?format=csv&from=2026-10-01&to=2026-10-31');
+  assert.equal(csv.status, 200);
+  assert.equal(csv.headers.get('content-type'), 'text/csv; charset=utf-8');
+  assert.equal(
+    csv.headers.get('content-disposition'),
+    'attachment; filename="webspend-2026-10-01-to-2026-10-31.csv"',
+  );
+  const lines = (await csv.text()).replace('\uFEFF', '').trim().split('\r\n');
+  assert.equal(lines.length, 3);
+  assert.match(lines[1]!, /^2026-10-05,18:30,Expense,Groceries,/);
+  assert.match(lines[2]!, /^2026-10-02,09:00,Expense,Bus fare,/);
+
+  const pdf = await raw('/api/exports?format=pdf&from=2026-10-01&to=2026-10-31');
+  assert.equal(pdf.status, 200);
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+  assert.equal((await pdf.text()).slice(0, 5), '%PDF-');
+
+  const backwards = await raw('/api/exports?format=csv&from=2026-10-31&to=2026-10-01');
+  assert.equal(backwards.status, 400);
+  assert.equal((await backwards.json()).error.message, 'from must not be after to');
+  assert.equal((await raw('/api/exports?format=xlsx')).status, 400);
 });
