@@ -108,7 +108,9 @@ export function Import() {
       <div>
         <h1 className="page-title">Import a statement</h1>
         <p className="page-sub">
-          CSV or JSON from your bank. Rows that match a transaction already logged are skipped.
+          CSV or JSON from your bank or another tracker. Rows that match a transaction already
+          logged are skipped. A category column files each row, adding any category you do not have
+          yet.
         </p>
       </div>
 
@@ -292,6 +294,12 @@ export function Import() {
         <section className="card stack" style={{ gap: 10 }}>
           <Notice kind="ok">
             Added {result.added} · Skipped {result.skipped}
+            {result.categoriesCreated > 0
+              ? ` · ${result.categoriesCreated} new ${result.categoriesCreated === 1 ? 'category' : 'categories'}`
+              : ''}
+            {result.categorised > 0
+              ? ` · ${result.categorised} already logged given a category`
+              : ''}
           </Notice>
           {result.errors.length > 0 ? (
             <div>

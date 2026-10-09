@@ -7,6 +7,7 @@ export const IMPORT_FIELD_LABELS: Record<ImportField, string> = {
   credit: 'Credit (money in)',
   description: 'Description',
   counterparty: 'Payee / counterparty',
+  category: 'Category',
   reference: 'Reference',
   balance: 'Balance after',
   ignore: 'Ignore',

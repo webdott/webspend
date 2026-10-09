@@ -2,10 +2,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { formatApprox, formatMinor, formatRate, formatSigned } from '@webspend/shared';
 import { useSummary, useTransactions } from '../api/hooks.ts';
 import { showsUsd, useUser } from '../components/user.ts';
+import { MonthPicker } from '../components/MonthPicker.tsx';
 import { CategoryLabel } from '../components/TransactionRow.tsx';
 import { Amount, EmptyState, ErrorState, LoadingState } from '../components/ui.tsx';
 import {
   currentMonth,
+  formatMonthName,
   formatMonthTitle,
   formatShortDate,
   isValidMonth,
@@ -15,7 +17,8 @@ import {
 export function Summary() {
   const user = useUser();
   const [params, setParams] = useSearchParams();
-  const month = isValidMonth(params.get('month')) ? params.get('month')! : currentMonth();
+  const asked = params.get('month');
+  const month = isValidMonth(asked) && asked <= currentMonth() ? asked : currentMonth();
   const summary = useSummary(month);
   const latest = useTransactions({ month, limit: 6 });
   const showUsd = showsUsd(user);
@@ -25,25 +28,7 @@ export function Summary() {
   return (
     <div className="stack">
       <div className="page-head">
-        <div className="month-nav">
-          <button
-            type="button"
-            className="btn btn--round"
-            aria-label="Previous month"
-            onClick={() => go(shiftMonth(month, -1))}
-          >
-            ‹
-          </button>
-          <h1 className="page-title">{formatMonthTitle(month)}</h1>
-          <button
-            type="button"
-            className="btn btn--round"
-            aria-label="Next month"
-            onClick={() => go(shiftMonth(month, 1))}
-          >
-            ›
-          </button>
-        </div>
+        <MonthPicker month={month} onChange={go} />
         {summary.data ? (
           <div className="row row--wrap">
             {summary.data.uncategorisedCount > 0 ? (
@@ -62,7 +47,7 @@ export function Summary() {
         <ErrorState error={summary.error} retry={() => summary.refetch()} />
       ) : (
         <>
-          <Hero s={summary.data} showUsd={showUsd} />
+          <Hero s={summary.data} showUsd={showUsd} month={month} />
           <div className="grid-2">
             <section>
               <h2 className="section-title">Where it went</h2>
@@ -145,68 +130,129 @@ export function Summary() {
 
 type S = NonNullable<ReturnType<typeof useSummary>['data']>;
 
-function Hero({ s, showUsd }: { s: S; showUsd: boolean }) {
+function Hero({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) {
   const hasBudget = s.budgetMinor !== null && s.leftMinor !== null;
-  const progress =
-    hasBudget && s.budgetMinor! > 0
-      ? Math.min(100, Math.max(0, (s.spentMinor / s.budgetMinor!) * 100))
-      : 0;
+  const had = s.carryOverMinor + s.incomeMinor;
+  const base = hasBudget ? s.budgetMinor! : had;
+  const progress = base > 0 ? Math.min(100, Math.max(0, (s.spentMinor / base) * 100)) : 0;
+  const net = s.incomeMinor - s.spentMinor;
+  const usd = (minor: number | null) =>
+    showUsd && minor !== null ? formatApprox(minor, 'USD') : null;
+  const headlineUsd = usd(hasBudget ? s.leftUsdMinor : s.availableUsdMinor);
+  const previous = formatMonthName(shiftMonth(month, -1));
+
   return (
     <section className="hero" aria-label="This month">
-      {hasBudget ? (
-        <>
-          <div className="hero__label">Left to spend</div>
-          <div className="hero__amount">{formatMinor(s.leftMinor!, s.currency)}</div>
-          <div className="hero__sub">
-            {showUsd && s.leftUsdMinor !== null ? `${formatApprox(s.leftUsdMinor, 'USD')} · ` : ''}
-            of {formatMinor(s.budgetMinor!, s.currency)} budget
-          </div>
-          <div
-            className="hero__progress"
-            role="progressbar"
-            aria-valuenow={Math.round(progress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Budget used"
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="hero__label">Spent this month</div>
-          <div className="hero__amount">{formatMinor(s.spentMinor, s.currency)}</div>
-          <div className="hero__sub">
-            {showUsd && s.spentUsdMinor !== null
-              ? `${formatApprox(s.spentUsdMinor, 'USD')} · `
-              : ''}
-            <Link to="/settings" style={{ fontWeight: 600 }}>
-              Set a monthly budget
-            </Link>{' '}
-            to see what is left
-          </div>
-          <div className="hero__progress" aria-hidden="true" />
-        </>
-      )}
-      <div className="hero__cols">
+      <div className="hero__top">
         <div>
-          <div className="hero__label">Spent</div>
-          <div className="hero__amount">{formatMinor(s.spentMinor, s.currency)}</div>
-          {showUsd && s.spentUsdMinor !== null ? (
-            <div className="hero__sub">{formatApprox(s.spentUsdMinor, 'USD')}</div>
-          ) : null}
-        </div>
-        <div>
-          <div className="hero__label">Income</div>
+          <div className="hero__label">{hasBudget ? 'Left to spend' : 'Available'}</div>
           <div className="hero__amount">
-            {formatSigned(s.incomeMinor, s.currency, s.incomeMinor > 0 ? 'income' : 'transfer')}
+            {formatMinor(hasBudget ? s.leftMinor! : s.availableMinor, s.currency)}
           </div>
-          {showUsd && s.incomeUsdMinor !== null ? (
-            <div className="hero__sub">{formatApprox(s.incomeUsdMinor, 'USD')}</div>
-          ) : null}
+          <div className="hero__sub">
+            {headlineUsd ? `${headlineUsd} · ` : ''}
+            {hasBudget ? (
+              <>
+                of {formatMinor(s.budgetMinor!, s.currency)} budget ·{' '}
+                {formatMinor(s.availableMinor, s.currency)} available
+              </>
+            ) : (
+              <>
+                carried over plus income, less spending · <Link to="/settings">Set a budget</Link>
+              </>
+            )}
+          </div>
+        </div>
+        <div className={`hero__net${net < 0 ? ' hero__net--down' : ''}`}>
+          <HeroIcon name={net < 0 ? 'down' : 'up'} />
+          <span className="mono">
+            {formatSigned(net, s.currency, net < 0 ? 'expense' : 'income')}
+          </span>
+          <span>this month</span>
         </div>
       </div>
+
+      <div className="hero__meter">
+        <div
+          className="hero__progress"
+          role="progressbar"
+          aria-valuenow={Math.round(progress)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={hasBudget ? 'Budget used' : 'Share of your money spent'}
+        >
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <span className="hero__meter-label mono">
+          {base > 0
+            ? `${Math.round(progress)}% ${hasBudget ? 'of budget' : ''} spent`
+            : 'No income yet'}
+        </span>
+      </div>
+
+      <div className="hero__tiles">
+        <HeroTile
+          icon="carry"
+          label={`Carried over from ${previous}`}
+          amount={formatMinor(s.carryOverMinor, s.currency)}
+          sub={usd(s.carryOverUsdMinor)}
+        />
+        <HeroTile
+          icon="in"
+          label="Income"
+          amount={formatSigned(
+            s.incomeMinor,
+            s.currency,
+            s.incomeMinor > 0 ? 'income' : 'transfer',
+          )}
+          sub={usd(s.incomeUsdMinor)}
+        />
+        <HeroTile
+          icon="out"
+          label="Spent"
+          amount={formatMinor(s.spentMinor, s.currency)}
+          sub={usd(s.spentUsdMinor)}
+        />
+      </div>
     </section>
+  );
+}
+
+type HeroIconName = 'carry' | 'in' | 'out' | 'up' | 'down';
+
+const HERO_ICON_PATHS: Record<HeroIconName, string> = {
+  carry: 'M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5',
+  in: 'M17 7 7 17M7 9v8h8',
+  out: 'M7 17 17 7M9 7h8v8',
+  up: 'M4 16l5-5 4 4 7-8M15 7h5v5',
+  down: 'M4 8l5 5 4-4 7 8M15 17h5v-5',
+};
+
+function HeroIcon({ name }: { name: HeroIconName }) {
+  return (
+    <svg className="hero__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d={HERO_ICON_PATHS[name]} />
+    </svg>
+  );
+}
+
+function HeroTile(props: {
+  icon: HeroIconName;
+  label: string;
+  amount: string;
+  sub: string | null;
+}) {
+  return (
+    <div className={`hero__tile hero__tile--${props.icon}`}>
+      <span className="hero__chip">
+        <HeroIcon name={props.icon} />
+      </span>
+      <div className="hero__tile-text">
+        <div className="hero__label">{props.label}</div>
+        <div className="hero__tile-amount">{props.amount}</div>
+        {props.sub ? <div className="hero__sub">{props.sub}</div> : null}
+      </div>
+    </div>
   );
 }
 

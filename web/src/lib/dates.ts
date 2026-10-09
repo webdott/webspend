@@ -31,6 +31,11 @@ export function formatMonthTitle(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
+export function formatMonthName(month: string): string {
+  const [y = 2026, m = 1] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long' });
+}
+
 export function formatDayHeading(day: string, today = new Date()): string {
   const t = dayOf(today);
   if (day === t) return 'Today';

@@ -432,6 +432,11 @@ function summaryFor(month: string): Summary {
     list.reduce((s, t) => s + toUsdMinor(t.amountMinor, perUsdFor(t.currency)), 0);
   const spentMinor = sumDefault(expenses);
   const incomeMinor = sumDefault(incomes);
+  const earlier = transactions.filter((t) => monthOf(t.occurredAt) < month);
+  const carryOverMinor =
+    sumDefault(earlier.filter((t) => t.type === 'income')) -
+    sumDefault(earlier.filter((t) => t.type === 'expense'));
+  const availableMinor = carryOverMinor + incomeMinor - spentMinor;
   const budget = user.monthlyBudgetMinor;
   const groups = new Map<string | null, Stored[]>();
   for (const t of expenses) {
@@ -466,6 +471,10 @@ function summaryFor(month: string): Summary {
     incomeUsdMinor: usdOrNull(sumUsd(incomes)),
     leftUsdMinor:
       budget === null || def === 'USD' ? null : toUsdMinor(budget - spentMinor, perUsdFor(def)),
+    carryOverMinor,
+    availableMinor,
+    carryOverUsdMinor: def === 'USD' ? null : toUsdMinor(carryOverMinor, perUsdFor(def)),
+    availableUsdMinor: def === 'USD' ? null : toUsdMinor(availableMinor, perUsdFor(def)),
     todayPerUsd: def === 'USD' ? null : perUsdFor(def),
     byCategory,
     uncategorisedCount: expenses.filter((t) => !t.categoryId).length,
@@ -765,7 +774,14 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
       );
       added++;
     }
-    return { importId: nextId('imp'), added, skipped, errors: parsed.errors };
+    return {
+      importId: nextId('imp'),
+      added,
+      skipped,
+      categoriesCreated: 0,
+      categorised: 0,
+      errors: parsed.errors,
+    };
   }
 
   throw new ApiError(404, 'not_found', `No mock for ${method} ${path}`);

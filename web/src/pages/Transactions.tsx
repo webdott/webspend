@@ -4,18 +4,11 @@ import type { TransactionType } from '@webspend/shared';
 import { parseMinor } from '@webspend/shared';
 import { api, type TransactionsQuery } from '../api/client.ts';
 import { useAccounts, useCategories, useInvalidateLedger, useTransactions } from '../api/hooks.ts';
+import { MonthPicker } from '../components/MonthPicker.tsx';
 import { TransactionRow } from '../components/TransactionRow.tsx';
 import { EmptyState, ErrorState, LoadingState, Notice, errorMessage } from '../components/ui.tsx';
 import { showsUsd, useUser } from '../components/user.ts';
-import {
-  currentMonth,
-  formatMonthTitle,
-  groupByDay,
-  inputToIso,
-  isValidMonth,
-  nowForInput,
-  shiftMonth,
-} from '../lib/dates.ts';
+import { groupByDay, inputToIso, isValidMonth, nowForInput } from '../lib/dates.ts';
 
 type Filter = 'all' | 'uncategorised' | 'unsure' | 'expense' | 'income' | 'transfer';
 const FILTERS: { value: Filter; label: string }[] = [
@@ -127,33 +120,11 @@ export function Transactions() {
             ))}
           </div>
           <div className="row">
-            <button
-              type="button"
-              className="btn btn--sm"
-              aria-label="Previous month"
-              onClick={() =>
-                update({
-                  month: shiftMonth(month && isValidMonth(month) ? month : currentMonth(), -1),
-                })
-              }
-            >
-              ‹
-            </button>
-            <span className="small" style={{ minWidth: 110, textAlign: 'center' }}>
-              {month && isValidMonth(month) ? formatMonthTitle(month) : 'All months'}
-            </span>
-            <button
-              type="button"
-              className="btn btn--sm"
-              aria-label="Next month"
-              onClick={() =>
-                update({
-                  month: shiftMonth(month && isValidMonth(month) ? month : currentMonth(), 1),
-                })
-              }
-            >
-              ›
-            </button>
+            <MonthPicker
+              compact
+              month={month && isValidMonth(month) ? month : null}
+              onChange={(value) => update({ month: value })}
+            />
             {month ? (
               <button
                 type="button"
