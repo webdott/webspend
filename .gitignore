@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+coverage/
+.pnpm-store/
+server/data/
+web/dist/
+landing/dist/
+apple/**/xcuserdata/
+apple/**/build/
+apple/**/DerivedData/
+apple/**/.build/
+apple/**/.swiftpm/
+.claude/

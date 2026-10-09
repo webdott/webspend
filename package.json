@@ -1,0 +1,17 @@
+{
+  "name": "webspend",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.25.0",
+  "scripts": {
+    "dev": "pnpm --filter server dev",
+    "web": "pnpm --filter web dev",
+    "seed": "pnpm --filter server seed",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1"
+  }
+}
