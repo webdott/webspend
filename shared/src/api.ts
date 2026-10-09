@@ -309,6 +309,12 @@ export type RatesResponse = { rates: FxRate[] };
 
 export type ImportFormat = 'csv' | 'json';
 
+/**
+ * Send as `accountId` to import a file that belongs to no particular account. The rows are kept
+ * under a catch-all account named "Unassigned", created the first time it is needed.
+ */
+export const NO_ACCOUNT = 'none';
+
 export type ImportField =
   | 'date'
   | 'amount'
