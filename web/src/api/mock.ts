@@ -24,7 +24,7 @@ import type {
   User,
   CategoryTotal,
 } from '@webspend/shared';
-import { BANK_LABELS, toUsdMinor } from '@webspend/shared';
+import { BANK_LABELS, NO_ACCOUNT, toUsdMinor } from '@webspend/shared';
 import { ApiError } from './client.ts';
 import { guessMapping, parseCsv, rowsToTransactions } from '../lib/importMapping.ts';
 import { dayOf, monthOf } from '../lib/dates.ts';
@@ -735,7 +735,8 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
 
   if (path === '/api/imports/preview' && method === 'POST') {
     const b = bodyOf<ImportPreviewRequest>(body);
-    if (!accounts.some((a) => a.id === b.accountId)) throw notFound('Account');
+    if (b.accountId !== NO_ACCOUNT && !accounts.some((a) => a.id === b.accountId))
+      throw notFound('Account');
     const { columns, rows } = parseImport(b.format, b.content);
     if (columns.length === 0)
       throw new ApiError(400, 'empty_file', 'No rows could be read from the file');
@@ -753,7 +754,10 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
   }
   if (path === '/api/imports' && method === 'POST') {
     const b = bodyOf<ImportCommitRequest>(body);
-    const account = accounts.find((a) => a.id === b.accountId);
+    const account =
+      b.accountId === NO_ACCOUNT
+        ? accounts.find((a) => a.bank === 'cash' || a.bank === 'other')
+        : accounts.find((a) => a.id === b.accountId);
     if (!account) throw notFound('Account');
     const { rows } = parseImport(b.format, b.content);
     const parsed = rowsToTransactions(rows, b.mapping);

@@ -8,7 +8,7 @@ import type {
   ImportMapping,
   ImportPreviewResponse,
 } from '@webspend/shared';
-import { BANK_LABELS, IMPORT_FIELDS } from '@webspend/shared';
+import { BANK_LABELS, IMPORT_FIELDS, NO_ACCOUNT } from '@webspend/shared';
 import { api } from '../api/client.ts';
 import { useAccounts, useInvalidateLedger } from '../api/hooks.ts';
 import { ErrorState, LoadingState, Notice, Segmented, errorMessage } from '../components/ui.tsx';
@@ -34,7 +34,7 @@ export function Import() {
     const first =
       (list.find((a) => a.tracked && a.bank !== 'grey') ?? list.find((a) => a.bank !== 'cash'))
         ?.id ?? '';
-    if (first) setAccountId(first);
+    setAccountId(first || NO_ACCOUNT);
   }, [accounts.data, accountId]);
 
   async function onFile(f: File | undefined) {
@@ -132,15 +132,13 @@ export function Import() {
                 setResult(null);
               }}
             >
-              {accounts.data.accounts.length === 0 ? (
-                <option value="">No accounts yet</option>
-              ) : null}
               {accounts.data.accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name} · {BANK_LABELS[a.bank]}
                   {a.accountNumber ? ` · ${a.accountNumber}` : ''}
                 </option>
               ))}
+              <option value={NO_ACCOUNT}>No account (file under Unassigned)</option>
             </select>
           )}
         </div>
