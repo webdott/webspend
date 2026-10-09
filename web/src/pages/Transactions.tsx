@@ -17,10 +17,11 @@ import {
   shiftMonth,
 } from '../lib/dates.ts';
 
-type Filter = 'all' | 'uncategorised' | 'expense' | 'income' | 'transfer';
+type Filter = 'all' | 'uncategorised' | 'unsure' | 'expense' | 'income' | 'transfer';
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'uncategorised', label: 'Needs a category' },
+  { value: 'unsure', label: 'Unsure' },
   { value: 'expense', label: 'Expenses' },
   { value: 'income', label: 'Income' },
   { value: 'transfer', label: 'Transfers' },
@@ -71,6 +72,7 @@ export function Transactions() {
       base.type = 'expense';
     } else if (categoryId) base.categoryId = categoryId;
     if (filter === 'expense' || filter === 'income' || filter === 'transfer') base.type = filter;
+    if (filter === 'unsure') base.unsure = true;
     return base;
   }, [month, q, filter, categoryId]);
 

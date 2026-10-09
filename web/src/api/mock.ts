@@ -12,7 +12,6 @@ import type {
   Currency,
   DateOrder,
   FxRate,
-  Gap,
   ImportCommitRequest,
   ImportField,
   ImportMapping,
@@ -213,6 +212,7 @@ function tx(
     bankReference: null,
     transferGroupId: null,
     isFee: false,
+    unsureTransfer: false,
     createdAt: occurredAt,
     ...rest,
   };
@@ -237,7 +237,9 @@ const transactions: Stored[] = [
     payee: 'Bolt',
     userDescription: 'Ride to Ikeja',
     categoryId: 'c_transport',
-    bankDescription: 'Transfer to BOLT OPERATIONS 7012345678 Providus',
+    bankDescription: 'Transfer to BOLT OPERATIONS *****45678 Providus',
+    counterpartyAccount: '*****45678',
+    unsureTransfer: true,
     bankReference: 'OP-2210871',
   }),
   tx('t_airtime', at(1, '12:05'), 'expense', 500_000, 'a_opay', {
@@ -369,23 +371,6 @@ const transactions: Stored[] = [
   }),
 ];
 
-const gaps: Gap[] = [
-  {
-    id: 'gap_1',
-    accountId: 'a_gtbank',
-    accountName: 'GTBank savings',
-    bank: 'gtbank',
-    fromAt: at(6, '16:45'),
-    toAt: at(4, '17:48'),
-    expectedBalanceMinor: 139_870_000,
-    actualBalanceMinor: 138_620_000,
-    differenceMinor: -1_250_000,
-    currency: 'NGN',
-    status: 'open',
-    createdAt: at(4, '17:49'),
-  },
-];
-
 const alerts: RawAlert[] = [
   {
     id: 'al_1',
@@ -484,7 +469,6 @@ function summaryFor(month: string): Summary {
     todayPerUsd: def === 'USD' ? null : perUsdFor(def),
     byCategory,
     uncategorisedCount: expenses.filter((t) => !t.categoryId).length,
-    openGapCount: gaps.filter((g) => g.status === 'open').length,
     lastAlertAt: lastAlert ?? null,
     trackedBanks: accounts.filter((a) => a.tracked).map((a) => a.bank),
   };
@@ -558,6 +542,7 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
       else if (categoryId) list = list.filter((t) => t.categoryId === categoryId);
       if (accountId) list = list.filter((t) => t.accountId === accountId);
       if (type) list = list.filter((t) => t.type === type);
+      if (q.get('unsure') === 'true') list = list.filter((t) => t.unsureTransfer);
       if (before) list = list.filter((t) => t.occurredAt < before);
       const page = list.slice(0, limit);
       return { transactions: page.map(view), hasMore: list.length > limit };
@@ -605,6 +590,7 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
         }
       }
       if (b.userDescription !== undefined) t.userDescription = b.userDescription?.trim() || null;
+      if (b.type !== undefined) t.unsureTransfer = false;
       if (b.type !== undefined && b.type !== t.type) {
         const pair = t.transferGroupId
           ? transactions.find((x) => x.transferGroupId === t.transferGroupId && x.id !== t.id)
@@ -715,21 +701,6 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
     }
   }
 
-  if (seg[1] === 'gaps') {
-    const id = seg[2];
-    if (!id && method === 'GET') {
-      const status = q.get('status');
-      return { gaps: status ? gaps.filter((g) => g.status === status) : gaps };
-    }
-    const g = gaps.find((x) => x.id === id);
-    if (!g) throw notFound('Gap');
-    if (method === 'PATCH') {
-      const { status } = bodyOf<{ status: 'open' | 'dismissed' }>(body);
-      g.status = status;
-      return { gap: g };
-    }
-  }
-
   if (path === '/api/alerts') return { alerts };
 
   if (path === '/api/rates' || path === '/api/rates/refresh') {
@@ -793,10 +764,6 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
         }),
       );
       added++;
-    }
-    if (b.gapId) {
-      const g = gaps.find((x) => x.id === b.gapId);
-      if (g) g.status = 'filled';
     }
     return { importId: nextId('imp'), added, skipped, errors: parsed.errors };
   }

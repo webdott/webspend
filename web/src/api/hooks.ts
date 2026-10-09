@@ -22,7 +22,6 @@ export const keys = {
   transaction: (id: string) => ['transaction', id] as const,
   categories: ['categories'] as const,
   accounts: ['accounts'] as const,
-  gaps: ['gaps'] as const,
   alerts: ['alerts'] as const,
   rates: ['rates'] as const,
 };
@@ -66,10 +65,6 @@ export function useAccounts() {
   return useQuery({ queryKey: keys.accounts, queryFn: api.accounts, staleTime: 30_000 });
 }
 
-export function useGaps() {
-  return useQuery({ queryKey: keys.gaps, queryFn: () => api.gaps('open') });
-}
-
 export function useFailedAlerts(enabled = true) {
   return useQuery({ queryKey: keys.alerts, queryFn: api.failedAlerts, enabled });
 }
@@ -85,7 +80,6 @@ export function useInvalidateLedger() {
       qc.invalidateQueries({ queryKey: ['summary'] }),
       qc.invalidateQueries({ queryKey: ['transactions'] }),
       qc.invalidateQueries({ queryKey: ['transaction'] }),
-      qc.invalidateQueries({ queryKey: keys.gaps }),
       qc.invalidateQueries({ queryKey: keys.accounts }),
     ]);
 }

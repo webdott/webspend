@@ -91,6 +91,38 @@ export function TransactionDetail() {
         ) : null}
       </div>
 
+      {t.unsureTransfer ? (
+        <section className="card stack" style={{ gap: 10 }}>
+          <h2 className="section-title" style={{ margin: 0 }}>
+            Is this a transfer to yourself?
+          </h2>
+          <p className="small muted" style={{ margin: 0 }}>
+            The other account
+            {t.counterpartyAccount ? ` (${t.counterpartyAccount})` : ''} ends in the same digits as
+            one of yours. It counts as {t.type === 'income' ? 'income' : 'an expense'} until you
+            say.
+          </p>
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={update.isPending}
+              onClick={() => update.mutate({ type: 'transfer' })}
+            >
+              Yes, it is mine
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={update.isPending}
+              onClick={() => update.mutate({ type: t.type })}
+            >
+              No, keep as {t.type === 'income' ? 'income' : 'an expense'}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card">
         <dl className="facts">
           <dt>Date</dt>
@@ -128,7 +160,7 @@ export function TransactionDetail() {
           {t.isFee ? (
             <>
               <dt>Note</dt>
-              <dd className="muted">Added by WebSpend from a balance check.</dd>
+              <dd className="muted">Added by WebSpend when pairing a conversion.</dd>
             </>
           ) : null}
         </dl>

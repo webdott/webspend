@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type {
   DateOrder,
   ImportCommitResponse,
@@ -8,20 +8,15 @@ import type {
   ImportMapping,
   ImportPreviewResponse,
 } from '@webspend/shared';
-import { BANK_LABELS, IMPORT_FIELDS, formatMinor } from '@webspend/shared';
+import { BANK_LABELS, IMPORT_FIELDS } from '@webspend/shared';
 import { api } from '../api/client.ts';
-import { useAccounts, useGaps, useInvalidateLedger } from '../api/hooks.ts';
+import { useAccounts, useInvalidateLedger } from '../api/hooks.ts';
 import { ErrorState, LoadingState, Notice, Segmented, errorMessage } from '../components/ui.tsx';
-import { formatDate } from '../lib/dates.ts';
 import { DATE_ORDER_LABELS, IMPORT_FIELD_LABELS, mappingProblems } from '../lib/importMapping.ts';
 
 export function Import() {
-  const [params] = useSearchParams();
-  const gapId = params.get('gapId');
   const accounts = useAccounts();
-  const gaps = useGaps();
   const invalidate = useInvalidateLedger();
-  const gap = gapId ? gaps.data?.gaps.find((g) => g.id === gapId) : undefined;
 
   const [accountId, setAccountId] = useState('');
   const [file, setFile] = useState<{ name: string; format: ImportFormat; content: string } | null>(
@@ -36,12 +31,11 @@ export function Import() {
   useEffect(() => {
     if (accountId || !accounts.data) return;
     const list = accounts.data.accounts;
-    const first = gap
-      ? gap.accountId
-      : ((list.find((a) => a.tracked && a.bank !== 'grey') ?? list.find((a) => a.bank !== 'cash'))
-          ?.id ?? '');
+    const first =
+      (list.find((a) => a.tracked && a.bank !== 'grey') ?? list.find((a) => a.bank !== 'cash'))
+        ?.id ?? '';
     if (first) setAccountId(first);
-  }, [accounts.data, gap, accountId]);
+  }, [accounts.data, accountId]);
 
   async function onFile(f: File | undefined) {
     setPreview(null);
@@ -94,7 +88,6 @@ export function Import() {
         format: file.format,
         content: file.content,
         mapping,
-        gapId: gapId ?? null,
       });
       setResult(res);
       await invalidate();
@@ -118,15 +111,6 @@ export function Import() {
           CSV or JSON from your bank. Rows that match a transaction already logged are skipped.
         </p>
       </div>
-
-      {gap ? (
-        <Notice>
-          Filling the gap on <strong>{gap.accountName}</strong> between {formatDate(gap.fromAt)} and{' '}
-          {formatDate(gap.toAt)}:{' '}
-          <span className="mono">{formatMinor(gap.differenceMinor, gap.currency)}</span> unaccounted
-          for.
-        </Notice>
-      ) : null}
 
       <section className="card stack" style={{ gap: 14 }}>
         <div className="field">
@@ -332,11 +316,6 @@ export function Import() {
             <button type="button" className="btn btn--ghost" onClick={() => onFile(undefined)}>
               Import another
             </button>
-            {gapId ? (
-              <Link to="/accounts" className="small" style={{ marginLeft: 'auto' }}>
-                Back to accounts
-              </Link>
-            ) : null}
           </div>
         </section>
       ) : null}

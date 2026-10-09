@@ -16,8 +16,6 @@ import type {
   CreateTransactionRequest,
   CreateTransactionResponse,
   DevSignInRequest,
-  GapResponse,
-  GapsResponse,
   ImportCommitRequest,
   ImportCommitResponse,
   ImportPreviewRequest,
@@ -32,7 +30,6 @@ import type {
   TransactionType,
   UpdateAccountRequest,
   UpdateCategoryRequest,
-  UpdateGapRequest,
   UpdateSettingsRequest,
   UpdateSettingsResponse,
   UpdateTransactionRequest,
@@ -108,6 +105,7 @@ export type TransactionsQuery = {
   categoryId?: string | 'none';
   accountId?: string;
   type?: TransactionType;
+  unsure?: boolean;
   limit?: number;
   before?: string;
 };
@@ -145,11 +143,6 @@ export const api = {
   updateAccount: (id: string, body: UpdateAccountRequest) =>
     request<AccountResponse>('PATCH', `/api/accounts/${id}`, body),
   deleteAccount: (id: string) => request<void>('DELETE', `/api/accounts/${id}`),
-
-  gaps: (status: 'open' | 'filled' | 'dismissed' = 'open') =>
-    request<GapsResponse>('GET', '/api/gaps', undefined, { status }),
-  updateGap: (id: string, body: UpdateGapRequest) =>
-    request<GapResponse>('PATCH', `/api/gaps/${id}`, body),
 
   failedAlerts: () =>
     request<AlertsResponse>('GET', '/api/alerts', undefined, { status: 'failed' }),

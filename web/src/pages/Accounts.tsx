@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Account, Bank, Gap, RawAlert } from '@webspend/shared';
+import type { Account, Bank, RawAlert } from '@webspend/shared';
 import { BANK_LABELS, TRACKED_BANKS, formatMinor } from '@webspend/shared';
 import { api } from '../api/client.ts';
-import { keys, useAccounts, useFailedAlerts, useGaps, useUpdateAccount } from '../api/hooks.ts';
+import { keys, useAccounts, useFailedAlerts, useUpdateAccount } from '../api/hooks.ts';
 import { EmptyState, ErrorState, LoadingState, Notice, errorMessage } from '../components/ui.tsx';
 import { formatAgo, formatDate, formatDateTime } from '../lib/dates.ts';
 
@@ -51,7 +51,6 @@ export function Accounts() {
         </>
       )}
 
-      <Gaps />
       <FailedAlerts />
     </div>
   );
@@ -270,79 +269,6 @@ function MyAccounts({ accounts }: { accounts: Account[] }) {
             Add
           </button>
         </form>
-        {error ? <Notice kind="error">{error}</Notice> : null}
-      </div>
-    </section>
-  );
-}
-
-function Gaps() {
-  const qc = useQueryClient();
-  const gaps = useGaps();
-  const [error, setError] = useState<string | null>(null);
-
-  async function dismiss(g: Gap) {
-    setError(null);
-    try {
-      await api.updateGap(g.id, { status: 'dismissed' });
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: keys.gaps }),
-        qc.invalidateQueries({ queryKey: ['summary'] }),
-      ]);
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
-
-  return (
-    <section id="gaps">
-      <h2 className="section-title">
-        <span>Gaps</span>
-        <span className="side">Where the balance after an alert did not add up</span>
-      </h2>
-      <div className="card">
-        {gaps.isPending ? (
-          <LoadingState />
-        ) : gaps.isError ? (
-          <ErrorState error={gaps.error} retry={() => gaps.refetch()} />
-        ) : gaps.data.gaps.length === 0 ? (
-          <EmptyState>No gaps. Every balance so far adds up.</EmptyState>
-        ) : (
-          <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {gaps.data.gaps.map((g) => (
-              <li
-                key={g.id}
-                className="list-item"
-                style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}
-              >
-                <span className="list-item__text">
-                  <span style={{ fontWeight: 500 }}>
-                    {g.accountName} ·{' '}
-                    <span className="mono">{formatMinor(g.differenceMinor, g.currency)}</span>{' '}
-                    unaccounted for
-                  </span>
-                  <span className="caption">
-                    {formatDate(g.fromAt)} – {formatDate(g.toAt)} · expected{' '}
-                    {formatMinor(g.expectedBalanceMinor, g.currency)}, saw{' '}
-                    {formatMinor(g.actualBalanceMinor, g.currency)}
-                  </span>
-                </span>
-                <span className="list-item__actions">
-                  <Link to={`/import?gapId=${g.id}`} className="btn btn--sm btn--primary">
-                    Import a statement
-                  </Link>
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--sm"
-                    onClick={() => dismiss(g)}
-                  >
-                    Dismiss
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
         {error ? <Notice kind="error">{error}</Notice> : null}
       </div>
     </section>

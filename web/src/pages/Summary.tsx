@@ -52,12 +52,6 @@ export function Summary() {
                 need a category
               </Link>
             ) : null}
-            {summary.data.openGapCount > 0 ? (
-              <Link to="/accounts#gaps" className="badge">
-                <span className="count">{summary.data.openGapCount}</span>
-                {summary.data.openGapCount === 1 ? 'gap to fill' : 'gaps to fill'}
-              </Link>
-            ) : null}
           </div>
         ) : null}
       </div>

@@ -33,6 +33,15 @@ export function TransactionRow({
 }
 
 export function CategoryLabel({ t }: { t: Transaction }) {
+  if (!t.unsureTransfer) return <CategoryName t={t} />;
+  return (
+    <>
+      <CategoryName t={t} /> · <span className="accent-text">Unsure</span>
+    </>
+  );
+}
+
+function CategoryName({ t }: { t: Transaction }) {
   if (t.type === 'transfer') return <>Transfer to self</>;
   if (t.categoryName) return <>{t.categoryName}</>;
   if (t.type === 'income') return <>Income</>;
