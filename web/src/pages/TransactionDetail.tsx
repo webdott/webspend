@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type { TransactionType } from '@webspend/shared';
-import { formatApprox, formatSigned } from '@webspend/shared';
+import type { Transaction, TransactionType, UpdateTransactionRequest } from '@webspend/shared';
+import { formatApprox, formatSigned, parseMinor } from '@webspend/shared';
 import { api } from '../api/client.ts';
 import {
   useCategories,
@@ -19,7 +19,7 @@ import {
   sourceLabel,
 } from '../components/ui.tsx';
 import { showsUsd, useUser } from '../components/user.ts';
-import { formatDateTime } from '../lib/dates.ts';
+import { formatDateTime, inputToIso, nowForInput } from '../lib/dates.ts';
 
 const PROCESSORS = /paystack|flutterwave|interswitch|remita|monnify|squad|opay checkout/i;
 
@@ -36,6 +36,7 @@ export function TransactionDetail() {
 
   const [remember, setRemember] = useState<boolean | null>(null);
   const [description, setDescription] = useState('');
+  const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -80,7 +81,14 @@ export function TransactionDetail() {
         <Link to="/transactions" className="back">
           ‹ Transactions
         </Link>
-        <h1 className="page-title">{t.title}</h1>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <h1 className="page-title">{t.title}</h1>
+          {editing ? null : (
+            <button type="button" className="btn btn--sm" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          )}
+        </div>
         <div className={`detail-amount${t.type === 'transfer' ? ' muted' : ''}`}>
           {formatSigned(t.amountMinor, t.currency, t.type)}
         </div>
@@ -90,6 +98,15 @@ export function TransactionDetail() {
           </div>
         ) : null}
       </div>
+
+      {editing ? (
+        <EditDetails
+          t={t}
+          saving={update.isPending}
+          onCancel={() => setEditing(false)}
+          onSave={(patch) => update.mutate(patch, { onSuccess: () => setEditing(false) })}
+        />
+      ) : null}
 
       {t.unsureTransfer ? (
         <section className="card stack" style={{ gap: 10 }}>
@@ -273,5 +290,107 @@ export function TransactionDetail() {
         <p className="caption">Transactions from alerts cannot be deleted. Re-mark them instead.</p>
       )}
     </div>
+  );
+}
+
+/** Minor units as the plain number a person would type: 4380000 → "43800.00". */
+function amountForInput(minor: number): string {
+  return `${Math.floor(minor / 100)}.${String(minor % 100).padStart(2, '0')}`;
+}
+
+function EditDetails(props: {
+  t: Transaction;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (patch: UpdateTransactionRequest) => void;
+}) {
+  const { t } = props;
+  const [title, setTitle] = useState(t.userTitle ?? '');
+  const [amount, setAmount] = useState(amountForInput(t.amountMinor));
+  const [when, setWhen] = useState(nowForInput(new Date(t.occurredAt)));
+  const [payee, setPayee] = useState(t.counterpartyName ?? '');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  function save(e: FormEvent) {
+    e.preventDefault();
+    const amountMinor = parseMinor(amount);
+    if (amountMinor === null || amountMinor <= 0) return setProblem('Enter an amount above zero.');
+    if (!when) return setProblem('Choose a date and time.');
+    setProblem(null);
+
+    const patch: UpdateTransactionRequest = {};
+    if (title.trim() !== (t.userTitle ?? '')) patch.title = title.trim() || null;
+    if (amountMinor !== t.amountMinor) patch.amountMinor = amountMinor;
+    if (when !== nowForInput(new Date(t.occurredAt))) patch.occurredAt = inputToIso(when);
+    if (payee.trim() !== (t.counterpartyName ?? '')) patch.counterpartyName = payee.trim() || null;
+    if (Object.keys(patch).length === 0) return props.onCancel();
+    props.onSave(patch);
+  }
+
+  return (
+    <form className="card stack" style={{ gap: 14 }} onSubmit={save} aria-label="Edit details">
+      <h2 className="section-title" style={{ margin: 0 }}>
+        Edit details
+      </h2>
+      <div className="field">
+        <label htmlFor="tx-title">Title</label>
+        <input
+          id="tx-title"
+          className="input"
+          maxLength={200}
+          placeholder={t.userTitle ? '' : t.title}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <span className="caption">Leave blank to use the payee or the bank's text.</span>
+      </div>
+      <div className="grid-2" style={{ gap: 14 }}>
+        <div className="field">
+          <label htmlFor="tx-amount">Amount ({t.currency})</label>
+          <input
+            id="tx-amount"
+            className="input mono"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="tx-when">Date and time</label>
+          <input
+            id="tx-when"
+            className="input"
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="tx-payee">{t.type === 'income' ? 'From' : 'To'}</label>
+        <input
+          id="tx-payee"
+          className="input"
+          maxLength={200}
+          placeholder="Payee"
+          value={payee}
+          onChange={(e) => setPayee(e.target.value)}
+        />
+      </div>
+      {t.source === 'alert' ? (
+        <span className="caption">
+          This came from a bank alert. Change the amount or date only if the alert was wrong.
+        </span>
+      ) : null}
+      {problem ? <Notice kind="error">{problem}</Notice> : null}
+      <div className="row">
+        <button type="submit" className="btn btn--primary" disabled={props.saving}>
+          Save
+        </button>
+        <button type="button" className="btn" disabled={props.saving} onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

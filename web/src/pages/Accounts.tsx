@@ -4,7 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Account, Bank, RawAlert } from '@webspend/shared';
 import { BANK_LABELS, TRACKED_BANKS, formatMinor } from '@webspend/shared';
 import { api } from '../api/client.ts';
-import { keys, useAccounts, useFailedAlerts, useUpdateAccount } from '../api/hooks.ts';
+import {
+  keys,
+  useAccounts,
+  useFailedAlerts,
+  useInvalidateLedger,
+  useUpdateAccount,
+} from '../api/hooks.ts';
 import { EmptyState, ErrorState, LoadingState, Notice, errorMessage } from '../components/ui.tsx';
 import { formatAgo, formatDate, formatDateTime } from '../lib/dates.ts';
 
@@ -199,30 +205,7 @@ function MyAccounts({ accounts }: { accounts: Account[] }) {
         ) : (
           <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {own.map((a) => (
-              <li key={a.id} className="list-item">
-                <span className="list-item__text">
-                  <span style={{ fontWeight: 500 }}>{a.name}</span>
-                  <span className="caption">
-                    {BANK_LABELS[a.bank]}
-                    {a.accountNumber ? (
-                      <>
-                        {' '}
-                        · <span className="mono">{a.accountNumber}</span>
-                      </>
-                    ) : null}
-                    {a.tracked ? ' · tracked' : ''}
-                  </span>
-                </span>
-                <span className="list-item__actions">
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--sm btn--danger"
-                    onClick={() => remove(a)}
-                  >
-                    Remove
-                  </button>
-                </span>
-              </li>
+              <AccountRow key={a.id} account={a} onRemove={() => remove(a)} onError={setError} />
             ))}
           </ul>
         )}
@@ -272,6 +255,115 @@ function MyAccounts({ accounts }: { accounts: Account[] }) {
         {error ? <Notice kind="error">{error}</Notice> : null}
       </div>
     </section>
+  );
+}
+
+function AccountRow(props: {
+  account: Account;
+  onRemove: () => void;
+  onError: (message: string | null) => void;
+}) {
+  const a = props.account;
+  const invalidate = useInvalidateLedger();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(a.name);
+  const [number, setNumber] = useState(a.accountNumber ?? '');
+  const [busy, setBusy] = useState(false);
+
+  function startEditing() {
+    setName(a.name);
+    setNumber(a.accountNumber ?? '');
+    setEditing(true);
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    props.onError(null);
+    try {
+      await api.updateAccount(a.id, { name: name.trim(), accountNumber: number.trim() || null });
+      await invalidate();
+      setEditing(false);
+    } catch (err) {
+      props.onError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <li className="list-item">
+        <form className="inline-form" style={{ flex: 1 }} onSubmit={save} aria-label="Edit account">
+          <label className="visually-hidden" htmlFor={`acc-name-${a.id}`}>
+            Name
+          </label>
+          <input
+            id={`acc-name-${a.id}`}
+            className="input"
+            maxLength={60}
+            required
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <label className="visually-hidden" htmlFor={`acc-number-${a.id}`}>
+            Account number
+          </label>
+          <input
+            id={`acc-number-${a.id}`}
+            className="input mono"
+            placeholder="Account number"
+            inputMode="numeric"
+            maxLength={40}
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+          />
+          <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>
+            Save
+          </button>
+          <button
+            type="button"
+            className="btn btn--sm"
+            disabled={busy}
+            onClick={() => setEditing(false)}
+          >
+            Cancel
+          </button>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="list-item">
+      <span className="list-item__text">
+        <span style={{ fontWeight: 500 }}>{a.name}</span>
+        <span className="caption">
+          {BANK_LABELS[a.bank]}
+          {a.accountNumber ? (
+            <>
+              {' '}
+              · <span className="mono">{a.accountNumber}</span>
+            </>
+          ) : null}
+          {a.tracked ? ' · tracked' : ''}
+        </span>
+      </span>
+      <span className="list-item__actions">
+        <button type="button" className="btn btn--ghost btn--sm" onClick={startEditing}>
+          Edit
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm btn--danger"
+          onClick={props.onRemove}
+        >
+          Remove
+        </button>
+      </span>
+    </li>
   );
 }
 

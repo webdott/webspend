@@ -207,6 +207,7 @@ function tx(
     counterpartyAccount: null,
     bankDescription: null,
     userDescription: null,
+    userTitle: null,
     categoryId: null,
     source: 'alert',
     bankReference: null,
@@ -412,7 +413,8 @@ function view(t: Stored): Transaction {
     ...t,
     accountName: account?.name ?? 'Unknown account',
     bank: account?.bank ?? 'other',
-    title: t.userDescription || t.counterpartyName || t.bankDescription || 'Transaction',
+    title:
+      t.userTitle || t.userDescription || t.counterpartyName || t.bankDescription || 'Transaction',
     categoryName: category?.name ?? null,
     defaultCurrency: user.defaultCurrency,
     defaultMinor: convert(t.amountMinor, t.currency, user.defaultCurrency),
@@ -543,7 +545,7 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
       if (month) list = list.filter((t) => monthOf(t.occurredAt) === month);
       if (text)
         list = list.filter((t) =>
-          [t.userDescription, t.counterpartyName, t.bankDescription]
+          [t.userTitle, t.userDescription, t.counterpartyName, t.bankDescription]
             .filter(Boolean)
             .some((s) => s!.toLowerCase().includes(text)),
         );
@@ -588,7 +590,15 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
         rememberForPayee?: boolean;
         userDescription?: string | null;
         type?: TransactionType;
+        title?: string | null;
+        occurredAt?: string;
+        amountMinor?: number;
+        counterpartyName?: string | null;
       }>(body);
+      if (b.title !== undefined) t.userTitle = b.title?.trim() || null;
+      if (b.occurredAt !== undefined) t.occurredAt = b.occurredAt;
+      if (b.amountMinor !== undefined) t.amountMinor = b.amountMinor;
+      if (b.counterpartyName !== undefined) t.counterpartyName = b.counterpartyName?.trim() || null;
       if (b.categoryId !== undefined) {
         if (b.categoryId && !categories.some((c) => c.id === b.categoryId))
           throw notFound('Category');
