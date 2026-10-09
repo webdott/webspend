@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="WebSpend">
+  <!-- WebSpend logo: rounded square in the accent colour with a white W drawn as one chart line. -->
+  <rect width="512" height="512" rx="116" fill="#5B4BFF"/>
+  <path d="M130 172 193 340 256 221 319 340 382 172" fill="none" stroke="#FFFFFF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
