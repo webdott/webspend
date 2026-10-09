@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+  <!-- WebSpend mark: a W drawn as a single chart line. Uses currentColor so it can be tinted. -->
+  <path d="M3 6 7.5 18 12 9.5 16.5 18 21 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

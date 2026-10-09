@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 40" width="196" height="40" role="img" aria-label="WebSpend">
+  <!-- WebSpend wordmark: logo tile plus the name set in Geist 600. Falls back to the system sans if Geist is not available. -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@600&amp;display=swap');
+    .name { font-family: Geist, system-ui, -apple-system, "Segoe UI", sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -0.02em; fill: currentColor; }
+  </style>
+  <rect width="40" height="40" rx="9" fill="#5B4BFF"/>
+  <path d="M10.2 13.4 15.1 26.6 20 17.3 24.9 26.6 29.8 13.4" fill="none" stroke="#FFFFFF" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text class="name" x="52" y="28.5">WebSpend</text>
+</svg>
