@@ -154,10 +154,13 @@ public actor MockAPI: WebSpendAPI {
             throw Failure(message: "No account with id \(request.accountId).")
         }
         let category = request.categoryId.flatMap { id in categoriesStore.first { $0.id == id } }
+        let isUsd = request.currency == .usd
         let t = Transaction(
             id: "t_\(UUID().uuidString.prefix(8))", occurredAt: request.occurredAt, type: request.type,
-            amountMinor: request.amountMinor, currency: request.currency, defaultMinor: request.amountMinor,
-            defaultCurrency: user.defaultCurrency, usdMinor: Money.toUsdMinor(request.amountMinor, perUsd: Fixtures.rate),
+            amountMinor: request.amountMinor, currency: request.currency,
+            defaultMinor: isUsd ? Int((Double(request.amountMinor) * Fixtures.rate).rounded()) : request.amountMinor,
+            defaultCurrency: user.defaultCurrency,
+            usdMinor: isUsd ? request.amountMinor : Money.toUsdMinor(request.amountMinor, perUsd: Fixtures.rate),
             fxPerUsd: Fixtures.rate, accountId: account.id, accountName: account.name, bank: account.bank,
             title: request.userDescription, counterpartyName: request.counterpartyName, counterpartyBank: nil,
             counterpartyAccount: nil, bankDescription: nil, userDescription: request.userDescription,
@@ -295,6 +298,7 @@ public actor MockAPI: WebSpendAPI {
             else if key.contains("credit") || key.contains("deposit") { columns[column] = .credit }
             else if key.contains("amount") { columns[column] = .amount }
             else if key.contains("desc") || key.contains("narr") || key.contains("memo") { columns[column] = .description }
+            else if key.contains("categ") { columns[column] = .category }
             else if key.contains("ref") { columns[column] = .reference }
             else if key.contains("balance") { columns[column] = .balance }
             else if key.contains("payee") || key.contains("counter") || key.contains("beneficiary") { columns[column] = .counterparty }
@@ -314,12 +318,108 @@ public actor MockAPI: WebSpendAPI {
         )
     }
 
+    /// Mirrors the server's rules closely enough for the demo: rows are mapped by `mapping`, a
+    /// `category` column creates names that are not on the list, a row matching a logged
+    /// transaction (same account, amount, day and description) is skipped and hands its category
+    /// to that transaction when it has none.
     public func importCommit(_ request: ImportCommitRequest) async throws -> ImportCommitResponse {
         await pause()
+        guard let account = accountsStore.first(where: { $0.id == request.accountId }) else {
+            throw Failure(message: "No account with id \(request.accountId).")
+        }
         let rows = parseRows(ImportPreviewRequest(accountId: request.accountId, format: request.format, content: request.content))
-        let count = max(0, rows.count - 1)
-        let skipped = min(count, 1)
-        return ImportCommitResponse(importId: "imp_\(UUID().uuidString.prefix(8))", added: count - skipped, skipped: skipped, errors: [])
+        guard let header = rows.first else { throw Failure(message: "The file is empty.") }
+        let mapping = request.mapping
+        func column(_ field: ImportField) -> Int? {
+            mapping.columns.first { $0.value == field }.flatMap { header.firstIndex(of: $0.key) }
+        }
+
+        var added = 0, skipped = 0, categoriesCreated = 0, categorised = 0
+        var errors: [ImportRowError] = []
+        for (offset, row) in rows.dropFirst().enumerated() {
+            func cell(_ field: ImportField) -> String? {
+                guard let index = column(field), index < row.count else { return nil }
+                let value = row[index].trimmingCharacters(in: .whitespaces)
+                return value.isEmpty ? nil : value
+            }
+            guard let date = cell(.date).flatMap({ Self.importDate($0, order: mapping.dateOrder) }) else {
+                errors.append(ImportRowError(row: offset + 1, reason: "unreadable date \"\(cell(.date) ?? "")\""))
+                continue
+            }
+            let amountMinor: Int
+            let type: TransactionType
+            if let debit = cell(.debit).flatMap(Money.parseMinor), debit > 0 {
+                (amountMinor, type) = (debit, .expense)
+            } else if let credit = cell(.credit).flatMap(Money.parseMinor), credit > 0 {
+                (amountMinor, type) = (credit, .income)
+            } else if let amount = cell(.amount).flatMap(Money.parseMinor), amount != 0 {
+                (amountMinor, type) = (abs(amount), (amount < 0) == mapping.negativeIsExpense ? .expense : .income)
+            } else {
+                errors.append(ImportRowError(row: offset + 1, reason: "no amount"))
+                continue
+            }
+            let description = cell(.description)
+            let categoryId: String? = cell(.category).map { name in
+                if let existing = categoriesStore.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+                    return existing.id
+                }
+                let created = Category(id: "c_\(UUID().uuidString.prefix(8))", name: name, sortOrder: categoriesStore.count)
+                categoriesStore.append(created)
+                categoriesCreated += 1
+                return created.id
+            }
+            let categoryName = categoryId.flatMap { id in categoriesStore.first { $0.id == id }?.name }
+
+            let day = String(ISO8601.string(date).prefix(10))
+            let wording = (description ?? "").lowercased()
+            if let index = transactionsStore.firstIndex(where: {
+                $0.accountId == account.id && $0.amountMinor == amountMinor && $0.occurredAt.hasPrefix(day)
+                    && ($0.bankDescription ?? $0.title).lowercased() == wording
+            }) {
+                skipped += 1
+                if transactionsStore[index].categoryId == nil, let categoryId {
+                    transactionsStore[index].categoryId = categoryId
+                    transactionsStore[index].categoryName = categoryName
+                    categorised += 1
+                }
+                continue
+            }
+
+            let isUsd = account.currency == .usd
+            transactionsStore.append(Transaction(
+                id: "t_\(UUID().uuidString.prefix(8))", occurredAt: ISO8601.string(date), type: type,
+                amountMinor: amountMinor, currency: account.currency,
+                defaultMinor: isUsd ? Int((Double(amountMinor) * Fixtures.rate).rounded()) : amountMinor,
+                defaultCurrency: user.defaultCurrency,
+                usdMinor: isUsd ? amountMinor : Money.toUsdMinor(amountMinor, perUsd: Fixtures.rate),
+                fxPerUsd: Fixtures.rate, accountId: account.id, accountName: account.name, bank: account.bank,
+                title: description ?? cell(.counterparty) ?? "Imported transaction", counterpartyName: cell(.counterparty),
+                counterpartyBank: nil, counterpartyAccount: nil, bankDescription: description, userDescription: nil,
+                categoryId: categoryId, categoryName: categoryName, source: .import, bankReference: cell(.reference),
+                transferGroupId: nil, isFee: false, createdAt: ISO8601.string(Date())
+            ))
+            added += 1
+        }
+        return ImportCommitResponse(
+            importId: "imp_\(UUID().uuidString.prefix(8))", added: added, skipped: skipped, errors: errors,
+            categoriesCreated: categoriesCreated, categorised: categorised
+        )
+    }
+
+    /// ISO 8601, or three numeric parts read in `order`. Numeric dates land at noon UTC so the
+    /// calendar day never shifts.
+    static func importDate(_ raw: String, order: DateOrder) -> Date? {
+        if let date = ISO8601.parse(raw) { return date }
+        let parts = raw.split(whereSeparator: { "/-. ".contains($0) }).prefix(3).compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        let (year, month, day): (Int, Int, Int) = switch order {
+        case .dmy: (parts[2], parts[1], parts[0])
+        case .mdy: (parts[2], parts[0], parts[1])
+        case .ymd: (parts[0], parts[1], parts[2])
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar.date(from: DateComponents(year: year < 100 ? 2000 + year : year, month: month, day: day, hour: 12))
     }
 
     public func intakeEmail(_ request: IntakeEmailRequest, secret: String) async throws -> RawAlert {

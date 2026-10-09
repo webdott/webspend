@@ -146,6 +146,37 @@ import Testing
         #expect(SessionStorage.googleSignInURL(server: URL(string: "http://localhost:8787")!, client: "iphone")?.absoluteString == "http://localhost:8787/auth/google?client=iphone")
     }
 
+    @Test func mockImportHonoursACategoryColumn() async throws {
+        let api = MockAPI(latency: .zero)
+        let account = try await api.accounts().first { $0.bank == .gtbank }!
+        let csv = """
+        Date,Narration,Debit,Credit,Category
+        03/10/2026,POS PURCHASE SHOPRITE,6685.00,,Food & groceries
+        04/10/2026,PHARMACY LEKKI,4200.00,,Health
+        05/10/2026,SCHOOL FEES,150000.00,,School fees
+        05/10/2026,SCHOOL FEES,150000.00,,School fees
+        """
+        let preview = try await api.importPreview(ImportPreviewRequest(accountId: account.id, format: .csv, content: csv))
+        #expect(preview.suggestedMapping.columns["Category"] == .category)
+        #expect(preview.dateAmbiguous)
+
+        let before = try await api.categories().map(\.name)
+        #expect(!before.contains("School fees"))
+        let result = try await api.importCommit(ImportCommitRequest(
+            accountId: account.id, format: .csv, content: csv, mapping: preview.suggestedMapping
+        ))
+        // The fourth row repeats the third, so it is skipped; "School fees" was not on the list.
+        #expect(result.added == 3)
+        #expect(result.skipped == 1)
+        #expect(result.categoriesCreated == 1)
+        let after = try await api.categories().map(\.name)
+        #expect(after.contains("School fees"))
+        let fees = try await api.transactions(TransactionQuery(q: "SCHOOL FEES")).transactions
+        #expect(fees.count == 1)
+        #expect(fees.first?.categoryName == "School fees")
+        #expect(fees.first?.occurredAt.hasPrefix("2026-10-05") == true)
+    }
+
     @Test func mockAPIServesFixtures() async throws {
         let api = MockAPI(latency: .zero)
         let summary = try await api.summary(month: nil)
