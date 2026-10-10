@@ -159,12 +159,21 @@ struct TransactionDetailView: View {
                 .padding(12)
                 .background(WS.chip, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .onSubmit { Task { await saveDescription() } }
-                .onChange(of: descriptionFocused) { _, focused in
-                    if !focused { Task { await saveDescription() } }
-                }
-            Text("Kept separate from the bank's own wording.").font(.ws(12)).foregroundStyle(WS.muted)
+            HStack {
+                Text("Kept separate from the bank's own wording.").font(.ws(12)).foregroundStyle(WS.muted)
+                Spacer()
+                Button(saving ? "Saving…" : "Save") { Task { await saveDescription() } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(WS.accent)
+                    .controlSize(.small)
+                    .disabled(!descriptionChanged || saving)
+            }
         }
         .wsCard()
+    }
+
+    private var descriptionChanged: Bool {
+        description.trimmingCharacters(in: .whitespacesAndNewlines) != (transaction.userDescription ?? "")
     }
 
     private var unsureSection: some View {
@@ -229,9 +238,11 @@ struct TransactionDetailView: View {
     }
 
     private func saveDescription() async {
+        guard descriptionChanged else { return }
         let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed != (transaction.userDescription ?? "") else { return }
         await save(UpdateTransactionRequest(userDescription: .some(trimmed.isEmpty ? nil : trimmed)))
+        descriptionFocused = false
+        if error == nil { store.toast = "Description saved" }
     }
 
     private func save(_ request: UpdateTransactionRequest) async {

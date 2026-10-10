@@ -41,6 +41,10 @@ export function Settings() {
   const rate = rates.data?.rates.find((r) => r.currency === user.defaultCurrency);
   const usdDefault = user.defaultCurrency === 'USD';
 
+  const budgetChanged =
+    budget.trim() === ''
+      ? user.monthlyBudgetMinor !== null
+      : parseMinor(budget.trim()) !== user.monthlyBudgetMinor;
   function saveBudget() {
     const trimmed = budget.trim();
     if (trimmed === '') {
@@ -140,16 +144,23 @@ export function Settings() {
             placeholder="None"
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
-            onBlur={saveBudget}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            onKeyDown={(e) => e.key === 'Enter' && saveBudget()}
           />
           <span className="row small muted" style={{ paddingRight: 4 }}>
             {user.defaultCurrency}
           </span>
+          <button
+            type="button"
+            className="btn btn--primary btn--sm"
+            disabled={!budgetChanged || update.isPending}
+            onClick={saveBudget}
+          >
+            {update.isPending ? 'Saving…' : 'Save'}
+          </button>
         </div>
         <span className="caption">
           {user.monthlyBudgetMinor === null
-            ? 'Leave empty for no budget. Saved when you click away.'
+            ? 'Leave empty for no budget.'
             : `Saved as ${formatMinor(user.monthlyBudgetMinor, user.defaultCurrency)}. Clear it for no budget.`}
         </span>
         {budgetError ? <Notice kind="error">{budgetError}</Notice> : null}

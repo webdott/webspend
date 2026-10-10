@@ -111,7 +111,11 @@ struct SettingsView: View {
                     .keyboardType(.decimalPad)
                     #endif
                     .onSubmit { Task { await saveBudget() } }
-                    .onChange(of: budgetFocused) { _, focused in if !focused { Task { await saveBudget() } } }
+                Button("Save") { Task { await saveBudget() } }
+                    .buttonStyle(.borderedProminent)
+                    .tint(WS.accent)
+                    .controlSize(.small)
+                    .disabled(!budgetChanged)
                 if user?.monthlyBudgetMinor != nil {
                     Button("Clear") {
                         budgetText = ""
@@ -190,7 +194,14 @@ struct SettingsView: View {
         }
     }
 
+    private var budgetChanged: Bool {
+        let trimmed = budgetText.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return user?.monthlyBudgetMinor != nil }
+        return Money.parseMinor(trimmed) != user?.monthlyBudgetMinor
+    }
+
     private func saveBudget() async {
+        budgetFocused = false
         let trimmed = budgetText.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty {
             if user?.monthlyBudgetMinor != nil { await store.updateSettings(UpdateSettingsRequest(monthlyBudgetMinor: .some(nil))) }
@@ -203,6 +214,7 @@ struct SettingsView: View {
         }
         guard minor != user?.monthlyBudgetMinor else { return }
         await store.updateSettings(UpdateSettingsRequest(monthlyBudgetMinor: .some(minor)))
+        store.toast = "Budget saved"
     }
 }
 

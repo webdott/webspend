@@ -55,10 +55,10 @@ export function TransactionDetail() {
   const pickCategory = (categoryId: string | null) =>
     update.mutate({ categoryId, rememberForPayee: canRemember && rememberOn });
 
+  const descriptionChanged = description.trim() !== (t.userDescription ?? '');
   const saveDescription = () => {
-    const next = description.trim();
-    if (next === (t.userDescription ?? '')) return;
-    update.mutate({ userDescription: next || null });
+    if (!descriptionChanged) return;
+    update.mutate({ userDescription: description.trim() || null });
   };
 
   async function remove() {
@@ -246,9 +246,18 @@ export function TransactionDetail() {
           placeholder="Kept separate from what the bank says"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          onBlur={saveDescription}
         />
-        <span className="caption">Saved when you click away.</span>
+        <div className="row row--between">
+          <span className="caption">Kept separate from what the bank says.</span>
+          <button
+            type="button"
+            className="btn btn--primary btn--sm"
+            disabled={!descriptionChanged || update.isPending}
+            onClick={saveDescription}
+          >
+            {update.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
       </section>
 
       <section className="card stack" style={{ gap: 10 }}>
