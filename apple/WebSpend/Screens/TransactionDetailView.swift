@@ -36,7 +36,7 @@ struct TransactionDetailView: View {
                 categorySection
                 descriptionSection
                 markAsSection
-                if transaction.source != .alert { deleteSection }
+                deleteSection
                 if let error {
                     Text(error).font(.ws(13)).foregroundStyle(WS.danger)
                 }
@@ -66,7 +66,7 @@ struct TransactionDetailView: View {
         .confirmationDialog("Delete this transaction?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { Task { await deleteTransaction() } }
         } message: {
-            Text("Only transactions you imported or entered by hand can be deleted.")
+            Text(transaction.source == .alert ? "The bank's email stays on file, but this will not be logged again." : "This cannot be undone.")
         }
     }
 

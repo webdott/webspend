@@ -288,16 +288,12 @@ export function TransactionDetail() {
         </span>
       ) : null}
 
-      {t.source !== 'alert' ? (
-        <div className="row">
-          <button type="button" className="btn btn--danger" disabled={deleting} onClick={remove}>
-            Delete
-          </button>
-          {deleteError ? <span className="small danger-text">{deleteError}</span> : null}
-        </div>
-      ) : (
-        <p className="caption">Transactions from alerts cannot be deleted. Re-mark them instead.</p>
-      )}
+      <div className="row">
+        <button type="button" className="btn btn--danger" disabled={deleting} onClick={remove}>
+          Delete
+        </button>
+        {deleteError ? <span className="small danger-text">{deleteError}</span> : null}
+      </div>
     </div>
   );
 }

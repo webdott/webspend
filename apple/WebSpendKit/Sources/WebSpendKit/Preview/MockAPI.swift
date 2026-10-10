@@ -176,9 +176,7 @@ public actor MockAPI: WebSpendAPI {
         guard let t = transactionsStore.first(where: { $0.id == id }) else {
             throw Failure(message: "No transaction with id \(id).")
         }
-        guard t.source != .alert else {
-            throw Failure(message: "Transactions from alerts cannot be deleted.")
-        }
+        _ = t
         transactionsStore.removeAll { $0.id == id }
     }
 

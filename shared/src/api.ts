@@ -269,7 +269,7 @@ export type CreateTransactionRequest = {
 };
 export type CreateTransactionResponse = { transaction: Transaction };
 
-/** DELETE /api/transactions/:id  (manual and imported only) → 204 */
+/** DELETE /api/transactions/:id → 204. Any transaction, including one logged from an alert. */
 
 /** GET /api/categories */
 export type CategoriesResponse = { categories: Category[] };

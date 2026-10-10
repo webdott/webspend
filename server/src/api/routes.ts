@@ -200,10 +200,9 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
   api.delete('/transactions/:id', async (c) => {
     const user = c.get('user');
     const id = transactionId(c.req.param('id'));
-    const row = await getTransactionRow(db, user.id, id);
-    if (row.source === 'alert' && !row.is_fee) {
-      throw new HttpError(409, 'conflict', 'transactions from alerts cannot be deleted');
-    }
+    // Any transaction can go, including one from an alert: the raw email stays on file and its
+    // message id keeps the poller from logging it again.
+    await getTransactionRow(db, user.id, id);
     await deleteTransaction(db, user.id, id);
     return c.body(null, 204);
   });
