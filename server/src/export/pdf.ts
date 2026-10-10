@@ -247,6 +247,10 @@ function drawPageNumbers(doc: PDFKit.PDFDocument): void {
   const { count } = doc.bufferedPageRange();
   for (let index = 0; index < count; index += 1) {
     doc.switchToPage(index);
+    // The footer sits inside the bottom margin. pdfkit starts a new page for any text that
+    // crosses that margin, so it is lifted for the one line and put back afterwards.
+    const bottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc
       .font('body')
       .fontSize(7.5)
@@ -256,6 +260,7 @@ function drawPageNumbers(doc: PDFKit.PDFDocument): void {
         align: 'right',
         lineBreak: false,
       });
+    doc.page.margins.bottom = bottom;
   }
 }
 

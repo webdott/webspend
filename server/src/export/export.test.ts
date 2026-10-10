@@ -130,7 +130,17 @@ test('an export covers exactly the days asked for, newest first, in both formats
   assert.equal(pdf.contentType, 'application/pdf');
   assert.equal(new TextDecoder().decode(pdf.body.slice(0, 5)), '%PDF-');
   assert.ok(pdf.body.length > 5_000, `pdf is ${pdf.body.length} bytes`);
+  // Three rows fit on one page. The footer must not push an empty page after it.
+  assert.equal(pdfPageCount(pdf.body), 1);
 });
+
+function pdfPageCount(body: Uint8Array): number {
+  return (
+    Buffer.from(body)
+      .toString('latin1')
+      .match(/\/Type\s*\/Page[^s]/g) ?? []
+  ).length;
+}
 
 test('a long export paginates the PDF without losing rows', async () => {
   const { db, user, accounts } = await fixture();
@@ -144,7 +154,6 @@ test('a long export paginates the PDF without losing rows', async () => {
     );
   }
   const pdf = await buildExport(db, user, { format: 'pdf', from: '2026-08-01', to: '2026-10-31' });
-  const text = Buffer.from(pdf.body).toString('latin1');
-  const pages = (text.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
-  assert.ok(pages >= 3, `expected at least three pages, got ${pages}`);
+  // 60 rows at 30pt each need three pages, and the footers must not add a fourth.
+  assert.equal(pdfPageCount(pdf.body), 3);
 });
