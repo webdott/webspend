@@ -4,7 +4,6 @@ import WebSpendKit
 
 struct TransactionsTableView: View {
     @Environment(AppStore.self) private var store
-    @State private var selection: Transaction.ID?
     @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
@@ -37,8 +36,8 @@ struct TransactionsTableView: View {
         }
         .onChange(of: store.filter) { _, _ in Task { await store.loadTransactions() } }
         .onChange(of: store.activityMonth) { _, _ in Task { await store.loadTransactions() } }
-        .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { selection = nil } })) {
-            if let id = selection, let transaction = store.transactions.value?.first(where: { $0.id == id }) {
+        .inspector(isPresented: Binding(get: { store.selectedTransactionId != nil }, set: { if !$0 { store.selectedTransactionId = nil } })) {
+            if let id = store.selectedTransactionId, let transaction = store.loadedTransaction(id: id) {
                 ScrollView {
                     TransactionDetailView(transaction: transaction)
                         .id(transaction.id)
@@ -52,6 +51,7 @@ struct TransactionsTableView: View {
     }
 
     @ViewBuilder private var table: some View {
+        @Bindable var store = store
         switch store.transactions {
         case .idle, .loading:
             LoadingState().wsCard()
@@ -61,7 +61,7 @@ struct TransactionsTableView: View {
             if items.isEmpty {
                 EmptyState(title: store.searchText.isEmpty ? "Nothing here yet" : "No matches", message: store.searchText.isEmpty ? "Transactions appear as alerts arrive." : "Try another word or clear the filter.", systemImage: "magnifyingglass").wsCard()
             } else {
-                Table(items, selection: $selection) {
+                Table(items, selection: $store.selectedTransactionId) {
                     TableColumn("Date") { t in
                         Text(t.occurredDate.map(Dates.dayHeading) ?? t.occurredAt).foregroundStyle(WS.muted)
                     }.width(min: 90, ideal: 100)

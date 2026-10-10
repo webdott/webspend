@@ -2,6 +2,9 @@ import SwiftUI
 import WebSpendKit
 
 struct SummaryView: View {
+    #if os(macOS)
+    @State private var clicked: Transaction.ID?
+    #endif
     @Environment(AppStore.self) private var store
 
     var body: some View {
@@ -66,7 +69,12 @@ struct SummaryView: View {
 
     private func latestList(_ summary: Summary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle("Latest") { RateLine(perUsd: summary.todayPerUsd, currency: summary.currency) }
+            SectionTitle("Latest") {
+                HStack(spacing: 12) {
+                    RateLine(perUsd: summary.todayPerUsd, currency: summary.currency)
+                    Button("All transactions") { store.showAllTransactions() }.buttonStyle(LinkButtonStyle())
+                }
+            }
             switch store.latest {
             case .idle, .loading:
                 LoadingState().wsCard()
@@ -94,7 +102,12 @@ struct SummaryView: View {
     #if os(macOS)
     private func latestTable(_ summary: Summary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle("Latest transactions") { RateLine(perUsd: summary.todayPerUsd, currency: summary.currency) }
+            SectionTitle("Latest transactions") {
+                HStack(spacing: 12) {
+                    RateLine(perUsd: summary.todayPerUsd, currency: summary.currency)
+                    Button("All transactions") { store.showAllTransactions() }.buttonStyle(LinkButtonStyle())
+                }
+            }
             switch store.latest {
             case .idle, .loading:
                 LoadingState().wsCard()
@@ -104,7 +117,7 @@ struct SummaryView: View {
                 if items.isEmpty {
                     EmptyState(title: "No transactions in \(store.monthTitle)", message: "Alerts from the banks you switch on will show here.").wsCard()
                 } else {
-                    Table(items) {
+                    Table(items, selection: $clicked) {
                         TableColumn("Date") { t in
                             Text(t.occurredDate.map(Dates.short) ?? t.occurredAt).foregroundStyle(WS.muted)
                         }.width(min: 70, ideal: 80)
@@ -124,6 +137,11 @@ struct SummaryView: View {
                                 .font(.wsMono(12)).foregroundStyle(WS.muted)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                         }.width(min: 80, ideal: 90)
+                    }
+                    .onChange(of: clicked) { _, id in
+                        guard let id, let transaction = items.first(where: { $0.id == id }) else { return }
+                        clicked = nil
+                        store.open(transaction)
                     }
                     .frame(minHeight: CGFloat(items.count) * 40 + 36, maxHeight: 320)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

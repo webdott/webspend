@@ -47,15 +47,20 @@ struct PhoneTabs: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
-        TabView {
+        @Bindable var store = store
+        TabView(selection: $store.phoneTab) {
             NavigationStack { SummaryView() }
                 .tabItem { Label("Summary", systemImage: "chart.pie") }
+                .tag(AppStore.PhoneTab.summary)
             NavigationStack { ActivityView() }
                 .tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
+                .tag(AppStore.PhoneTab.activity)
             NavigationStack { AccountsView() }
                 .tabItem { Label("Accounts", systemImage: "building.columns") }
+                .tag(AppStore.PhoneTab.accounts)
             NavigationStack { SettingsView() }
                 .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(AppStore.PhoneTab.settings)
         }
         .toolbarBackground(WS.card, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

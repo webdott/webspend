@@ -75,6 +75,10 @@ final class AppStore {
     var rates: [FxRate] = []
 
     var macSection: MacSection = .summary
+    enum PhoneTab: Hashable { case summary, activity, accounts, settings }
+    var phoneTab: PhoneTab = .summary
+    /// The transaction open in the Mac inspector.
+    var selectedTransactionId: String?
     /// Shows the add-a-transaction sheet. Set from any screen's Add button.
     var isAddingTransaction = false
     /// Shows the export sheet, started from the month on show.
@@ -331,6 +335,30 @@ final class AppStore {
         }
         return query
     }
+
+    /// "All transactions" on the summary: the activity list for the month on show.
+    func showAllTransactions() {
+        activityMonth = month
+        #if os(iOS)
+        phoneTab = .activity
+        #else
+        macSection = .transactions
+        #endif
+        Task { await loadTransactions() }
+    }
+
+    #if os(macOS)
+    /// Opens a transaction in the Transactions section's inspector, wherever it was clicked.
+    func open(_ transaction: Transaction) {
+        macSection = .transactions
+        selectedTransactionId = transaction.id
+    }
+
+    /// The transaction with this id from whichever list has it loaded.
+    func loadedTransaction(id: String) -> Transaction? {
+        (transactions.value ?? []).first { $0.id == id } ?? (latest.value ?? []).first { $0.id == id }
+    }
+    #endif
 
     func loadTransactions() async {
         if transactions.value == nil { transactions = .loading }
