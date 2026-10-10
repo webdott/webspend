@@ -61,6 +61,8 @@ final class AppStore {
     var isLoadingMore = false
     var searchText = ""
     var filter: Filter = .all
+    /// Limits the activity list to one month. Nil shows every month.
+    var activityMonth: String?
     var categories: Loadable<[Category]> = .idle
     var accounts: Loadable<[Account]> = .idle
     var rates: [FxRate] = []
@@ -306,6 +308,7 @@ final class AppStore {
 
     private var transactionQuery: TransactionQuery {
         var query = TransactionQuery(limit: 50)
+        query.month = activityMonth
         query.q = searchText.isEmpty ? nil : searchText
         switch filter {
         case .all: break

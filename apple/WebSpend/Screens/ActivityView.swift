@@ -14,6 +14,10 @@ struct ActivityView: View {
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                ActivityMonthBar(month: $store.activityMonth)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 6, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             content
         }
@@ -37,6 +41,7 @@ struct ActivityView: View {
             }
         }
         .onChange(of: store.filter) { _, _ in Task { await store.loadTransactions() } }
+        .onChange(of: store.activityMonth) { _, _ in Task { await store.loadTransactions() } }
         .refreshable { await store.loadTransactions() }
         .navigationDestination(for: Transaction.self) { TransactionDetailView(transaction: $0) }
     }

@@ -15,7 +15,11 @@ struct TransactionsTableView: View {
                 Spacer()
                 RateLine(perUsd: store.todayPerUsd, currency: store.defaultCurrency)
             }
-            FilterChips()
+            HStack(alignment: .center, spacing: 12) {
+                FilterChips()
+                Spacer(minLength: 12)
+                ActivityMonthBar(month: $store.activityMonth)
+            }
             table
         }
         .padding(WSLayout.pagePadding)
@@ -32,6 +36,7 @@ struct TransactionsTableView: View {
             }
         }
         .onChange(of: store.filter) { _, _ in Task { await store.loadTransactions() } }
+        .onChange(of: store.activityMonth) { _, _ in Task { await store.loadTransactions() } }
         .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { selection = nil } })) {
             if let id = selection, let transaction = store.transactions.value?.first(where: { $0.id == id }) {
                 ScrollView {
