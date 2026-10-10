@@ -194,6 +194,18 @@ import Testing
         await #expect(throws: MockAPI.Failure.self) { try await api.export(ExportQuery(format: .pdf)) }
     }
 
+    #if os(macOS)
+    /// The test runner has no team, like an ad-hoc build of the app: the app-scoped keychain
+    /// refuses it without a password prompt, and the token still round-trips through the fallback.
+    @Test func sessionTokenSurvivesWithoutAKeychainEntitlement() throws {
+        defer { SessionStorage.deleteToken() }
+        try SessionStorage.saveToken("token-123")
+        #expect(SessionStorage.loadToken() == "token-123")
+        SessionStorage.deleteToken()
+        #expect(SessionStorage.loadToken() == nil)
+    }
+    #endif
+
     @Test func mockAPIServesFixtures() async throws {
         let api = MockAPI(latency: .zero)
         let summary = try await api.summary(month: nil)

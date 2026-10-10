@@ -71,14 +71,23 @@ public enum Keychain {
         }
     }
 
-    public static func read(account: String) -> String? {
-        let query: [String: Any] = [
+    /// Every query uses the app-scoped (data protection) keychain. On macOS the login keychain
+    /// ties each item to the code signature that made it, so every ad-hoc build of the app would
+    /// be asked for the keychain password to read the last build's token. The app-scoped keychain
+    /// has no such prompt; a build with no team cannot use it and falls back to UserDefaults.
+    private static func baseQuery(account: String) -> [String: Any] {
+        [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseDataProtectionKeychain as String: true,
         ]
+    }
+
+    public static func read(account: String) -> String? {
+        var query = baseQuery(account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess, let data = item as? Data else { return nil }
@@ -87,23 +96,14 @@ public enum Keychain {
 
     public static func write(_ value: String, account: String) throws {
         delete(account: account)
-        let attributes: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: Data(value.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-        ]
+        var attributes = baseQuery(account: account)
+        attributes[kSecValueData as String] = Data(value.utf8)
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
     public static func delete(account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        SecItemDelete(query as CFDictionary)
+        SecItemDelete(baseQuery(account: account) as CFDictionary)
     }
 }
