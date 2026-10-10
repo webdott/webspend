@@ -10,6 +10,7 @@ export const SENDERS = {
   opay: 'no-reply@opay-nigeria.com',
   moniepoint: 'no-reply@moniepoint.com',
   gtbank: 'GeNS@gtbank.com',
+  grey: 'hello@grey.co',
 };
 
 export function sample(name: string): string {

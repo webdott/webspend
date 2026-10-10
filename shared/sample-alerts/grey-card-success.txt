@@ -1,0 +1,18 @@
+Hey TEST,
+
+Your card transaction was successful😄
+-------------------------------------
+
+Here are the details:
+
+Transaction type Virtual card Merchant Example Cloud Subscription Amount debited $100.00 Description Card spend at Example Cloud Subscription Reference SAMPLE42MI4 Date & time 10/10/2026 - 5:33 PM UTC
+
+If you didn't initiate this transaction, please contact our support team immediately via in-app or email support@grey.co
+
+Inclusive global banking designed for you
+
+( https://example.invalid/a ) ( https://example.invalid/b )
+
+651 N Broad Street, Suite 206, Middletown, DE 19700
+
+©2026. Grey. All rights reserved.

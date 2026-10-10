@@ -146,3 +146,54 @@ test('mail from an address no parser owns is rejected', () => {
     detail: 'alerts@gtbank-secure.example',
   });
 });
+
+test('Grey card spend is a dollar expense timed in Lagos', () => {
+  const result = parseAlert({
+    from: 'Grey <hello@grey.co>',
+    subject: 'Card transaction successful',
+    text: sample('grey-card-success'),
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    alert: {
+      bank: 'grey',
+      direction: 'debit',
+      amountMinor: 10_000,
+      currency: 'USD',
+      occurredAt: '2026-10-10T18:33:00+01:00',
+      account: null,
+      balanceAfterMinor: null,
+      counterparty: { name: 'Example Cloud Subscription', bank: null, account: null },
+      description: 'Card spend at Example Cloud Subscription',
+      reference: 'SAMPLE42MI4',
+      channel: 'card',
+    },
+  });
+});
+
+test('a declined Grey card and Grey marketing are not transactions', () => {
+  const failed = parseAlert({
+    from: 'hello@grey.co',
+    subject: 'Card transaction failed',
+    text: sample('grey-card-failed'),
+  });
+  assert.deepEqual(failed, {
+    ok: false,
+    reason: 'not_a_transaction',
+    detail: 'Card transaction failed',
+  });
+  const offer = parseAlert({
+    from: 'hello@grey.co',
+    subject: 'Meet the new Grey app',
+    text: 'Hi!',
+  });
+  assert.equal(offer.ok, false);
+  if (!offer.ok) assert.equal(offer.reason, 'not_a_transaction');
+  const unknown = parseAlert({
+    from: 'hello@grey.co',
+    subject: 'You received a payment',
+    text: 'Hi!',
+  });
+  assert.equal(unknown.ok, false);
+  if (!unknown.ok) assert.equal(unknown.reason, 'unrecognised_layout');
+});

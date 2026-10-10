@@ -1,0 +1,18 @@
+Hey TEST,
+
+Switch to another balance to keep spending smoothly.
+----------------------------------------------------
+
+Here are the details:
+
+Transaction type Virtual card Merchant EXAMPLE* CLOUD SUB Amount debited $0.00 Description EXAMPLE* CLOUD SUB Reference SAMPLE689I Reason Card is frozen. Unfreeze it in the app to continue. Date & time 10/10/2026 - 5:23 PM UTC
+
+If you didn't initiate this transaction, please contact our support team immediately via in-app or email support@grey.co
+
+Inclusive global banking designed for you
+
+( https://example.invalid/a ) ( https://example.invalid/b )
+
+651 N Broad Street, Suite 206, Middletown, DE 19700
+
+©2026. Grey. All rights reserved.

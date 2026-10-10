@@ -1,4 +1,4 @@
-export type Bank = 'opay' | 'moniepoint' | 'gtbank';
+export type Bank = 'opay' | 'moniepoint' | 'gtbank' | 'grey';
 
 /**
  * The parts of an incoming email the parsers need.
@@ -22,14 +22,15 @@ export type Counterparty = {
 export type ParsedAlert = {
   bank: Bank;
   direction: 'debit' | 'credit';
-  /** Kobo. Money is never held as a decimal, so totals stay exact. */
+  /** Kobo or cents. Money is never held as a decimal, so totals stay exact. */
   amountMinor: number;
-  currency: 'NGN';
+  currency: 'NGN' | 'USD';
   /** ISO 8601 in Lagos time (+01:00), the zone every alert reports in. */
   occurredAt: string;
   /** The user's own account as the alert shows it. Null when the alert omits it (OPay). */
   account: string | null;
-  balanceAfterMinor: number;
+  /** Null when the alert carries no balance (Grey), which skips the balance check. */
+  balanceAfterMinor: number | null;
   counterparty: Counterparty | null;
   /** The bank's own wording, kept verbatim for display and for pairing transfers later. */
   description: string;

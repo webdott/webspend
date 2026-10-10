@@ -305,3 +305,22 @@ test('a dollar leg and a naira leg joined by their reference still log the excha
   assert.equal(fee.amountMinor, 1_000_000);
   assert.equal(fee.isFee, true);
 });
+
+test('a Grey card spend is logged in dollars with the naira equivalent', async () => {
+  const { db, user, send } = await fixture();
+  const alert = await send({
+    from: SENDERS.grey,
+    subject: 'Card transaction successful',
+    text: sample('grey-card-success'),
+  });
+  assert.equal(alert.status, 'parsed', alert.detail ?? '');
+  const { transactions } = await listTransactions(db, user, {});
+  const spend = transactions.find((t) => t.id === alert.transactionId)!;
+  assert.equal(spend.type, 'expense');
+  assert.equal(spend.currency, 'USD');
+  assert.equal(spend.amountMinor, 10_000);
+  assert.equal(spend.usdMinor, 10_000);
+  assert.equal(spend.defaultMinor, 15_000_000);
+  assert.equal(spend.title, 'Example Cloud Subscription');
+  assert.equal(spend.bank, 'grey');
+});
