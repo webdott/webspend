@@ -187,7 +187,7 @@ export function Import() {
                 {preview.rowCount} {preview.rowCount === 1 ? 'row' : 'rows'}
               </span>
             </h2>
-            <div className="mapping">
+            <div className="mapping capped">
               {preview.columns.map((col) => (
                 <label key={col}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{col}</span>

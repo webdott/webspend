@@ -1091,6 +1091,18 @@ button {
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
+/* Any list that can grow long scrolls inside a fixed height. Transactions are the one exception. */
+.capped {
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.capped--short {
+  max-height: 200px;
+}
+
 .list-item {
   display: flex;
   align-items: center;

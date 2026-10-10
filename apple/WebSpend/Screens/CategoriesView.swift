@@ -105,6 +105,7 @@ struct CategoriesView: View {
                         if index < categories.count - 1 { Hairline() }
                     }
                 }
+                .scrollsWhenLong()
                 .wsCard(padding: 14)
             }
         }

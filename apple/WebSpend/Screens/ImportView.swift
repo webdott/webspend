@@ -110,6 +110,7 @@ struct ImportView: View {
                 SectionTitle("3. Columns") {
                     Text("\(preview.rowCount) rows").font(.ws(12)).foregroundStyle(WS.muted)
                 }
+                VStack(spacing: 0) {
                 ForEach(preview.columns, id: \.self) { column in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -128,6 +129,8 @@ struct ImportView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                }
+                .scrollsWhenLong(maxHeight: 320)
                 if preview.dateAmbiguous {
                     Hairline()
                     VStack(alignment: .leading, spacing: 6) {

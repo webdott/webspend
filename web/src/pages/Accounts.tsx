@@ -203,7 +203,7 @@ function MyAccounts({ accounts }: { accounts: Account[] }) {
             the totals.
           </EmptyState>
         ) : (
-          <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="list list--scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {own.map((a) => (
               <AccountRow key={a.id} account={a} onRemove={() => remove(a)} onError={setError} />
             ))}
@@ -399,7 +399,7 @@ function FailedAlerts() {
               Every alert so far was read. Ones that cannot be are kept here for a parser fix.
             </EmptyState>
           ) : (
-            <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <ul className="list list--scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {alerts.data.alerts.map((a) => (
                 <li key={a.id} className="list-item" style={{ alignItems: 'flex-start' }}>
                   <span className="list-item__text">

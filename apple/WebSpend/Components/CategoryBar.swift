@@ -46,6 +46,7 @@ struct WhereItWent: View {
                         CategoryBar(total: total, maxMinor: maxMinor, currency: currency, showUsd: showUsd)
                     }
                 }
+                .scrollsWhenLong()
                 .wsCard()
             }
         }

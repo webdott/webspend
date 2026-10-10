@@ -198,7 +198,7 @@ export function TransactionDetail() {
               No categories yet. <Link to="/categories">Add some</Link> to start sorting.
             </p>
           ) : (
-            <div className="pills" role="group" aria-label="Category">
+            <div className="pills capped capped--short" role="group" aria-label="Category">
               {categories.data.categories.map((c) => (
                 <button
                   key={c.id}

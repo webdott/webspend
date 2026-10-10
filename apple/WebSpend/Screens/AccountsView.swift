@@ -99,6 +99,7 @@ struct AccountsView: View {
                             if index < own.count - 1 { Hairline() }
                         }
                     }
+                    .scrollsWhenLong()
                     .wsCard(padding: 14)
                 }
             }

@@ -136,6 +136,7 @@ struct TransactionDetailView: View {
                         }
                     }
                 }
+                .scrollsWhenLong(maxHeight: 180)
             }
             Hairline()
             SwitchRow(title: "Remember for this payee", subtitle: "Starts off for processors like Paystack", isOn: $remember)
