@@ -38,9 +38,27 @@ struct TransactionsTableView: View {
         .onChange(of: store.activityMonth) { _, _ in Task { await store.loadTransactions() } }
         .inspector(isPresented: Binding(get: { store.selectedTransactionId != nil }, set: { if !$0 { store.selectedTransactionId = nil } })) {
             if let id = store.selectedTransactionId, let transaction = store.loadedTransaction(id: id) {
-                ScrollView {
-                    TransactionDetailView(transaction: transaction)
-                        .id(transaction.id)
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        Button { store.selectedTransactionId = nil } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(WS.muted)
+                                .frame(width: 26, height: 26)
+                                .background(WS.chip, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(.cancelAction)
+                        .help("Close")
+                        .accessibilityLabel("Close the transaction")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+                    ScrollView {
+                        TransactionDetailView(transaction: transaction)
+                            .id(transaction.id)
+                    }
                 }
                 .inspectorColumnWidth(min: 320, ideal: 360, max: 460)
                 .background(WS.bg)
