@@ -53,6 +53,13 @@ final class AppStore {
     var signInError: String?
     var toast: String?
 
+    /// Whether the app is in front. Set by the root view from the scene phase.
+    var isActive = true {
+        didSet { if isActive, !oldValue { Task { await pingIfStale() } } }
+    }
+    private var keepAliveTask: Task<Void, Never>?
+    private var lastServerContact: Date = .distantPast
+
     var month: String = Dates.monthID()
     var summary: Loadable<Summary> = .idle
     var latest: Loadable<[Transaction]> = .idle
@@ -127,6 +134,7 @@ final class AppStore {
         do {
             user = try await api.me()
             phase = .signedIn
+            startKeepAlive()
             await refreshAll()
         } catch {
             if (error as? APIClientError)?.isUnauthorized == true {
@@ -213,6 +221,7 @@ final class AppStore {
             }
             signInError = nil
             phase = .signedIn
+            startKeepAlive()
             await refreshAll()
         } catch {
             signInError = describe(error)
@@ -220,6 +229,7 @@ final class AppStore {
     }
 
     func startDemo() {
+        stopKeepAlive()
         api = MockAPI()
         isDemo = true
         user = Fixtures.user
@@ -231,6 +241,7 @@ final class AppStore {
     }
 
     func signOut() async {
+        stopKeepAlive()
         if !isDemo {
             try? await api.logout()
             SessionStorage.deleteToken()
@@ -532,6 +543,38 @@ final class AppStore {
     }
 
     // MARK: Errors
+
+    // MARK: Keep-alive
+
+    /// Render's free tier sleeps a service after 15 idle minutes and takes most of a minute to
+    /// wake. A ping every ten minutes while the app is open keeps it warm, and coming back to the
+    /// front after a longer absence pings at once so the server is awake before the next screen.
+    static let keepAliveInterval: Duration = .seconds(10 * 60)
+    private static let freshFor: TimeInterval = 9 * 60
+
+    private func startKeepAlive() {
+        keepAliveTask?.cancel()
+        lastServerContact = Date()
+        keepAliveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.keepAliveInterval)
+                guard let self, !Task.isCancelled else { return }
+                await self.pingIfStale()
+            }
+        }
+    }
+
+    private func stopKeepAlive() {
+        keepAliveTask?.cancel()
+        keepAliveTask = nil
+    }
+
+    private func pingIfStale() async {
+        guard phase == .signedIn, !isDemo, isActive,
+              Date().timeIntervalSince(lastServerContact) >= Self.freshFor else { return }
+        lastServerContact = Date()
+        _ = try? await api.meta()
+    }
 
     func describe(_ error: Error) -> String {
         if let apiError = error as? APIClientError { return apiError.errorDescription ?? "Unknown error" }

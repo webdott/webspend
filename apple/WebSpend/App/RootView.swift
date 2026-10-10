@@ -3,6 +3,7 @@ import WebSpendKit
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -36,6 +37,7 @@ struct RootView: View {
         .preferredColorScheme(store.preferredColorScheme)
         .tint(WS.accent)
         .task { await store.bootstrap() }
+        .onChange(of: scenePhase) { _, phase in store.isActive = phase == .active }
         .onOpenURL { url in Task { await store.handleCallback(url) } }
     }
 }

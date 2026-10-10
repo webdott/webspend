@@ -3,6 +3,7 @@ import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { formatRate } from '@webspend/shared';
 import { useMe, useRates } from '../api/hooks.ts';
 import { isApiError } from '../api/client.ts';
+import { useKeepAlive } from '../lib/keepAlive.ts';
 import { applyTheme } from '../theme.ts';
 import {
   AddTransactionButton,
@@ -31,6 +32,7 @@ export function Shell() {
   useEffect(() => {
     applyTheme(user?.theme);
   }, [user?.theme]);
+  useKeepAlive(!!user);
 
   if (me.isPending) {
     return (
