@@ -225,3 +225,11 @@ test('exports download as a file for the days asked for, and refuse a backwards 
   assert.equal((await backwards.json()).error.message, 'from must not be after to');
   assert.equal((await raw('/api/exports?format=xlsx')).status, 400);
 });
+
+test('an inbox check is a no-op without a mailbox, so refresh never fails on it', async () => {
+  const { call } = await client();
+  await call('POST', '/auth/dev', { email: 'dev@webspend.local' });
+  const poll = await call('POST', '/api/intake/poll');
+  assert.equal(poll.status, 200);
+  assert.deepEqual(poll.body, { polled: false, added: 0 });
+});

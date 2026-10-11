@@ -3,6 +3,7 @@ import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { formatRate } from '@webspend/shared';
 import { useMe, useRates } from '../api/hooks.ts';
 import { isApiError } from '../api/client.ts';
+import { useInboxCheck } from '../lib/inboxCheck.ts';
 import { useKeepAlive } from '../lib/keepAlive.ts';
 import { applyTheme } from '../theme.ts';
 import {
@@ -33,6 +34,7 @@ export function Shell() {
     applyTheme(user?.theme);
   }, [user?.theme]);
   useKeepAlive(!!user);
+  useInboxCheck(!!user);
 
   if (me.isPending) {
     return (

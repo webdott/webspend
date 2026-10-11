@@ -280,6 +280,9 @@ final class AppStore {
     // MARK: Loading
 
     func refreshAll() async {
+        // A refresh first asks the server to read the inbox, so a payment that just happened
+        // shows up without waiting for the next minute's poll.
+        if !isDemo, meta?.googleAuth == true { _ = try? await api.pollInbox() }
         async let a: Void = loadSummary()
         async let b: Void = loadTransactions()
         async let c: Void = loadCategories()

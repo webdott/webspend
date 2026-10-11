@@ -721,6 +721,7 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
     }
   }
 
+  if (path === '/api/intake/poll' && method === 'POST') return { polled: false, added: 0 };
   if (path === '/api/alerts') return { alerts };
 
   if (path === '/api/rates' || path === '/api/rates/refresh') {

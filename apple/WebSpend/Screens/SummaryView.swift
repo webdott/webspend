@@ -18,7 +18,7 @@ struct SummaryView: View {
             .frame(maxWidth: .infinity)
         }
         .wsPage()
-        .refreshable { await store.loadSummary() }
+        .refreshable { await store.refreshAll() }
         #if os(iOS)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Transaction.self) { TransactionDetailView(transaction: $0) }

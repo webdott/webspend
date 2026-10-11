@@ -175,6 +175,10 @@ public actor APIClient: WebSpendAPI {
 
     // MARK: Intake
 
+    public func pollInbox() async throws -> PollInboxResponse {
+        try await send("POST", "/api/intake/poll")
+    }
+
     public func export(_ query: ExportQuery) async throws -> ExportedFile {
         let (data, response) = try await perform("GET", "/api/exports", query: query.queryItems, body: nil, headers: ["Accept": "*/*"])
         let disposition = response.value(forHTTPHeaderField: "Content-Disposition") ?? ""

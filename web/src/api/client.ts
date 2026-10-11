@@ -37,6 +37,7 @@ import type {
   UpdateTransactionRequest,
   UpdateTransactionResponse,
   ExportQuery,
+  PollInboxResponse,
 } from '@webspend/shared';
 
 export const MOCK = import.meta.env.VITE_MOCK === '1';
@@ -156,6 +157,8 @@ export const api = {
     request<ImportPreviewResponse>('POST', '/api/imports/preview', body),
   importCommit: (body: ImportCommitRequest) =>
     request<ImportCommitResponse>('POST', '/api/imports', body),
+
+  pollInbox: () => request<PollInboxResponse>('POST', '/api/intake/poll'),
 
   /**
    * Where to download an export from. The real server builds the file and names it through

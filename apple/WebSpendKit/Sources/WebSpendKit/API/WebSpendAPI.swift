@@ -34,6 +34,9 @@ public protocol WebSpendAPI: Sendable {
     /// Downloads the transactions in a range of days as a CSV or PDF file.
     func export(_ query: ExportQuery) async throws -> ExportedFile
 
+    /// Reads the inbox now, ahead of the regular poll. Returns how many transactions that added.
+    func pollInbox() async throws -> PollInboxResponse
+
     // Intake relay (needs the intake secret, not a session token)
     func intakeEmail(_ request: IntakeEmailRequest, secret: String) async throws -> RawAlert
 }

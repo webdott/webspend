@@ -420,6 +420,8 @@ public actor MockAPI: WebSpendAPI {
         return calendar.date(from: DateComponents(year: year < 100 ? 2000 + year : year, month: month, day: day, hour: 12))
     }
 
+    public func pollInbox() async throws -> PollInboxResponse { PollInboxResponse(polled: false, added: 0) }
+
     /// A CSV shaped like the server's, from the in-memory ledger. PDF needs the real server.
     public func export(_ query: ExportQuery) async throws -> ExportedFile {
         await pause()

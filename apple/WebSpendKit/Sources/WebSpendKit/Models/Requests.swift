@@ -467,3 +467,13 @@ public struct ExportedFile: Sendable, Hashable {
         self.data = data
     }
 }
+
+/// `POST /api/intake/poll`: an inbox check ahead of the regular poll.
+public struct PollInboxResponse: Codable, Sendable, Hashable {
+    public var polled: Bool
+    public var added: Int
+    public init(polled: Bool, added: Int) {
+        self.polled = polled
+        self.added = added
+    }
+}

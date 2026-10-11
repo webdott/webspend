@@ -435,4 +435,12 @@ export type ExportQuery = {
   type?: TransactionType;
 };
 
+/**
+ * POST /api/intake/poll
+ * Checks the signed-in user's inbox for new alerts right now, ahead of the regular poll, so a
+ * refresh in an app shows a payment that just happened. `polled` is false when Google is not
+ * configured, the user has no mailbox, or a check ran in the last few seconds.
+ */
+export type PollInboxResponse = { polled: boolean; added: number };
+
 export type ApiError = { error: { code: string; message: string } };

@@ -42,7 +42,7 @@ struct ActivityView: View {
         }
         .onChange(of: store.filter) { _, _ in Task { await store.loadTransactions() } }
         .onChange(of: store.activityMonth) { _, _ in Task { await store.loadTransactions() } }
-        .refreshable { await store.loadTransactions() }
+        .refreshable { await store.refreshAll() }
         .navigationDestination(for: Transaction.self) { TransactionDetailView(transaction: $0) }
     }
 

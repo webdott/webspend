@@ -41,6 +41,7 @@ All variables are optional for local use. See `.env.example` for the full list w
 | `DEV_AUTH`                                 | on unless `NODE_ENV=production` | `1` enables `POST /auth/dev`.                                         |
 | `INTAKE_SECRET`                            | unset                           | Enables `POST /api/intake/email` (header `X-Intake-Secret`).          |
 | `POLL_INTERVAL_SECONDS`                    | `60`                            | Gmail poll interval.                                                  |
+| `KEEP_AWAKE`                               | on in production off localhost  | Ping `PUBLIC_URL/healthz` every ten minutes so a free Render service never idles. `0` turns it off. |
 | `RATE_SOURCE`                              | `open-er-api`                   | `open-er-api` (no key) or `fixed`.                                    |
 | `FIXED_RATES`                              | unset                           | `NGN:1500,GBP:0.78,EUR:0.92`, units per US dollar, for `fixed`.       |
 

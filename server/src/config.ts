@@ -17,6 +17,8 @@ export type Config = {
   devAuth: boolean;
   intakeSecret: string | undefined;
   pollIntervalSeconds: number;
+  /** Ping the public URL every ten minutes so a free Render service never idles. */
+  keepAwake: boolean;
   rateSource: RateSourceName;
   fixedRates: Partial<Record<Currency, number>>;
   production: boolean;
@@ -40,6 +42,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     devAuth: env.DEV_AUTH === undefined ? !production : env.DEV_AUTH === '1',
     intakeSecret: blankToUndefined(env.INTAKE_SECRET),
     pollIntervalSeconds: integer(env.POLL_INTERVAL_SECONDS, 60),
+    keepAwake:
+      env.KEEP_AWAKE === undefined
+        ? production && !/localhost|127\.0\.0\.1/.test(env.PUBLIC_URL ?? '')
+        : env.KEEP_AWAKE === '1',
     rateSource: env.RATE_SOURCE === 'fixed' ? 'fixed' : 'open-er-api',
     fixedRates: parseFixedRates(env.FIXED_RATES),
     production,

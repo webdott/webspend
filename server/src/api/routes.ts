@@ -15,6 +15,7 @@ import {
   importPreviewSchema,
   intakeEmailSchema,
   type MeResponse,
+  type PollInboxResponse,
   monthSchema,
   NO_ACCOUNT,
   type RatesResponse,
@@ -32,6 +33,7 @@ import type { Db } from '../db/index.ts';
 import { buildExport } from '../export/index.ts';
 import { commitImport, previewImport } from '../import/index.ts';
 import { listAlerts, processAlertEmail } from '../intake/pipeline.ts';
+import { pollNow } from '../intake/poller.ts';
 import {
   createAccount,
   deleteAccount,
@@ -288,6 +290,11 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
     const input = (await parseBody(c, importCommitSchema)) as ImportCommitRequest;
     if (input.accountId !== NO_ACCOUNT) requireUuid(input.accountId, 'account');
     return c.json(await commitImport(db, user, input, recordOptions));
+  });
+
+  api.post('/intake/poll', async (c) => {
+    const body: PollInboxResponse = await pollNow(db, config, c.get('user'), recordOptions);
+    return c.json(body);
   });
 
   api.post('/intake/email', async (c) => {
