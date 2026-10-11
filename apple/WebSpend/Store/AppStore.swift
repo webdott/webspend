@@ -60,6 +60,11 @@ final class AppStore {
     private var keepAliveTask: Task<Void, Never>?
     private var lastServerContact: Date = .distantPast
 
+    /// Dots instead of figures on the summary card, for a glance in a public place. Per device.
+    var hideHeroAmounts: Bool = UserDefaults.standard.bool(forKey: "hideHeroAmounts") {
+        didSet { UserDefaults.standard.set(hideHeroAmounts, forKey: "hideHeroAmounts") }
+    }
+
     var month: String = Dates.monthID()
     var summary: Loadable<Summary> = .idle
     var latest: Loadable<[Transaction]> = .idle

@@ -6,7 +6,15 @@ import WebSpendKit
 struct HeroCard: View {
     let summary: Summary
     let showUsd: Bool
+    /// Dots instead of figures. The card keeps its layout so nothing jumps when toggled.
+    var hidden = false
+    var onToggleHidden: (() -> Void)?
     var radius: CGFloat = WSLayout.heroRadius
+
+    /// Every figure becomes dots, the currency sign stays.
+    private func show(_ text: String) -> String {
+        hidden ? text.replacing(/\d[\d,.]*/, with: "••••••") : text
+    }
 
     private var currency: Currency { summary.currency }
     private var hasBudget: Bool { summary.budgetMinor != nil && summary.leftMinor != nil }
@@ -19,13 +27,13 @@ struct HeroCard: View {
                 Text(hasBudget ? "Left to spend" : "Available")
                     .font(.ws(13, .medium))
                     .foregroundStyle(WS.onAccentMuted)
-                Text(Money.formatMinor(hasBudget ? (summary.leftMinor ?? 0) : summary.available, currency))
+                Text(show(Money.formatMinor(hasBudget ? (summary.leftMinor ?? 0) : summary.available, currency)))
                     .font(.wsMono(42, .bold))
                     .tracking(-1.4)
                     .foregroundStyle(WS.onAccent)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                Text(subline)
+                Text(show(subline))
                     .font(.ws(13))
                     .foregroundStyle(WS.onAccentMuted)
             }
@@ -42,14 +50,26 @@ struct HeroCard: View {
 
             VStack(spacing: 10) {
                 tile("arrow.triangle.2.circlepath", "Carried over from \(previousMonth)", Money.formatMinor(summary.carriedOver, currency), summary.carryOverUsdMinor, chip: Color.white.opacity(0.18), icon: WS.onAccent)
-                HStack(spacing: 10) {
-                    tile("arrow.down.left", "Income", Money.formatSigned(summary.incomeMinor, currency, summary.incomeMinor > 0 ? .income : .transfer), summary.incomeUsdMinor, chip: Color(hex: 0x58F0A0).opacity(0.26), icon: Color(hex: 0xC9FFE1))
-                    tile("arrow.up.right", "Spent", Money.formatMinor(summary.spentMinor, currency), summary.spentUsdMinor, chip: Color(hex: 0xFF8C78).opacity(0.28), icon: Color(hex: 0xFFE1DC))
-                }
+                // Side by side on the Mac; stacked on the iPhone, where two columns truncate.
+                incomeAndSpent
             }
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topTrailing) {
+            if let onToggleHidden {
+                Button(action: onToggleHidden) {
+                    Image(systemName: hidden ? "eye.slash" : "eye")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(WS.onAccent)
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.16), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(hidden ? "Show amounts" : "Hide amounts")
+                .padding(14)
+            }
+        }
         .background { backdrop }
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Color.white.opacity(0.16), lineWidth: 1))
@@ -76,11 +96,27 @@ struct HeroCard: View {
         }
     }
 
+    @ViewBuilder private var incomeAndSpent: some View {
+        let income = tile("arrow.down.left", "Income", Money.formatSigned(summary.incomeMinor, currency, summary.incomeMinor > 0 ? .income : .transfer), summary.incomeUsdMinor, chip: Color(hex: 0x58F0A0).opacity(0.26), icon: Color(hex: 0xC9FFE1))
+        let spent = tile("arrow.up.right", "Spent", Money.formatMinor(summary.spentMinor, currency), summary.spentUsdMinor, chip: Color(hex: 0xFF8C78).opacity(0.28), icon: Color(hex: 0xFFE1DC))
+        #if os(iOS)
+        VStack(spacing: 10) {
+            income
+            spent
+        }
+        #else
+        HStack(spacing: 10) {
+            income
+            spent
+        }
+        #endif
+    }
+
     private var netPill: some View {
         HStack(spacing: 8) {
             Image(systemName: net < 0 ? "chart.line.downtrend.xyaxis" : "chart.line.uptrend.xyaxis")
                 .font(.system(size: 13, weight: .semibold))
-            Text(Money.formatSigned(net, currency, net < 0 ? .expense : .income)).font(.wsMono(13))
+            Text(show(Money.formatSigned(net, currency, net < 0 ? .expense : .income))).font(.wsMono(13))
             Text("this month").font(.ws(13)).foregroundStyle(WS.onAccentMuted)
         }
         .foregroundStyle(net < 0 ? Color(hex: 0xFFE1DC) : Color(hex: 0xD9FFE9))
@@ -116,13 +152,13 @@ struct HeroCard: View {
                 .background(chip, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.ws(12, .medium)).foregroundStyle(WS.onAccentMuted).lineLimit(1)
-                Text(amount)
+                Text(show(amount))
                     .font(.wsMono(16, .bold))
                     .foregroundStyle(WS.onAccent)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if showUsd, let approx = Money.formatApprox(usd, .usd) {
-                    Text(approx).font(.wsMono(11, .medium)).foregroundStyle(WS.onAccentMuted)
+                    Text(show(approx)).font(.wsMono(11, .medium)).foregroundStyle(WS.onAccentMuted)
                 }
             }
             Spacer(minLength: 0)

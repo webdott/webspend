@@ -673,7 +673,7 @@ button {
 .hero {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: clip;
   color: var(--on-accent);
   border-radius: var(--r-hero);
   padding: 26px 26px 22px;
@@ -721,6 +721,31 @@ button {
 }
 .hero a:hover {
   color: var(--on-accent-muted);
+}
+.hero__top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero__eye {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--on-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.hero__eye:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+.hero__eye .hero__icon {
+  width: 18px;
+  height: 18px;
 }
 .hero__top {
   display: flex;

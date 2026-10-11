@@ -42,7 +42,7 @@ struct SummaryView: View {
         case let .loaded(summary):
             #if os(macOS)
             HStack(alignment: .top, spacing: 20) {
-                HeroCard(summary: summary, showUsd: store.showUsd)
+                HeroCard(summary: summary, showUsd: store.showUsd, hidden: store.hideHeroAmounts, onToggleHidden: { store.hideHeroAmounts.toggle() })
                     .frame(maxWidth: .infinity)
                 WhereItWent(totals: summary.byCategory, currency: summary.currency, showUsd: store.showUsd)
                     .frame(maxWidth: .infinity)
@@ -50,7 +50,7 @@ struct SummaryView: View {
             notices(summary)
             latestTable(summary)
             #else
-            HeroCard(summary: summary, showUsd: store.showUsd)
+            HeroCard(summary: summary, showUsd: store.showUsd, hidden: store.hideHeroAmounts, onToggleHidden: { store.hideHeroAmounts.toggle() })
             notices(summary)
             WhereItWent(totals: summary.byCategory, currency: summary.currency, showUsd: store.showUsd)
             latestList(summary)

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { formatApprox, formatMinor, formatRate, formatSigned } from '@webspend/shared';
 import { useSummary, useTransactions } from '../api/hooks.ts';
@@ -130,7 +131,35 @@ export function Summary() {
 
 type S = NonNullable<ReturnType<typeof useSummary>['data']>;
 
+const HIDE_KEY = 'webspend.hideAmounts';
+
+function readHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Replaces every figure with dots, keeping the currency sign, for a glance in a public place. */
+function masked(text: string): string {
+  return text.replace(/\d[\d,.]*/g, '••••••');
+}
+
 function Hero({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) {
+  const [hidden, setHidden] = useState(readHidden);
+  const toggleHidden = () => {
+    setHidden((value) => {
+      try {
+        localStorage.setItem(HIDE_KEY, value ? '0' : '1');
+      } catch {
+        // Remembering the choice is a convenience; the toggle still works for this visit.
+      }
+      return !value;
+    });
+  };
+  const show = (text: string) => (hidden ? masked(text) : text);
+  const showMaybe = (text: string | null) => (text === null ? null : show(text));
   const hasBudget = s.budgetMinor !== null && s.leftMinor !== null;
   const had = s.carryOverMinor + s.incomeMinor;
   const base = hasBudget ? s.budgetMinor! : had;
@@ -147,14 +176,14 @@ function Hero({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) 
         <div>
           <div className="hero__label">{hasBudget ? 'Left to spend' : 'Available'}</div>
           <div className="hero__amount">
-            {formatMinor(hasBudget ? s.leftMinor! : s.availableMinor, s.currency)}
+            {show(formatMinor(hasBudget ? s.leftMinor! : s.availableMinor, s.currency))}
           </div>
           <div className="hero__sub">
-            {headlineUsd ? `${headlineUsd} · ` : ''}
+            {headlineUsd ? `${show(headlineUsd)} · ` : ''}
             {hasBudget ? (
               <>
-                of {formatMinor(s.budgetMinor!, s.currency)} budget ·{' '}
-                {formatMinor(s.availableMinor, s.currency)} available
+                of {show(formatMinor(s.budgetMinor!, s.currency))} budget ·{' '}
+                {show(formatMinor(s.availableMinor, s.currency))} available
               </>
             ) : (
               <>
@@ -163,12 +192,24 @@ function Hero({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) 
             )}
           </div>
         </div>
-        <div className={`hero__net${net < 0 ? ' hero__net--down' : ''}`}>
-          <HeroIcon name={net < 0 ? 'down' : 'up'} />
-          <span className="mono">
-            {formatSigned(net, s.currency, net < 0 ? 'expense' : 'income')}
-          </span>
-          <span>this month</span>
+        <div className="hero__top-right">
+          <div className={`hero__net${net < 0 ? ' hero__net--down' : ''}`}>
+            <HeroIcon name={net < 0 ? 'down' : 'up'} />
+            <span className="mono">
+              {show(formatSigned(net, s.currency, net < 0 ? 'expense' : 'income'))}
+            </span>
+            <span>this month</span>
+          </div>
+          <button
+            type="button"
+            className="hero__eye"
+            aria-pressed={hidden}
+            aria-label={hidden ? 'Show amounts' : 'Hide amounts'}
+            title={hidden ? 'Show amounts' : 'Hide amounts'}
+            onClick={toggleHidden}
+          >
+            <HeroIcon name={hidden ? 'eyeOff' : 'eye'} />
+          </button>
         </div>
       </div>
 
@@ -194,31 +235,29 @@ function Hero({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) 
         <HeroTile
           icon="carry"
           label={`Carried over from ${previous}`}
-          amount={formatMinor(s.carryOverMinor, s.currency)}
-          sub={usd(s.carryOverUsdMinor)}
+          amount={show(formatMinor(s.carryOverMinor, s.currency))}
+          sub={showMaybe(usd(s.carryOverUsdMinor))}
         />
         <HeroTile
           icon="in"
           label="Income"
-          amount={formatSigned(
-            s.incomeMinor,
-            s.currency,
-            s.incomeMinor > 0 ? 'income' : 'transfer',
+          amount={show(
+            formatSigned(s.incomeMinor, s.currency, s.incomeMinor > 0 ? 'income' : 'transfer'),
           )}
-          sub={usd(s.incomeUsdMinor)}
+          sub={showMaybe(usd(s.incomeUsdMinor))}
         />
         <HeroTile
           icon="out"
           label="Spent"
-          amount={formatMinor(s.spentMinor, s.currency)}
-          sub={usd(s.spentUsdMinor)}
+          amount={show(formatMinor(s.spentMinor, s.currency))}
+          sub={showMaybe(usd(s.spentUsdMinor))}
         />
       </div>
     </section>
   );
 }
 
-type HeroIconName = 'carry' | 'in' | 'out' | 'up' | 'down';
+type HeroIconName = 'carry' | 'in' | 'out' | 'up' | 'down' | 'eye' | 'eyeOff';
 
 const HERO_ICON_PATHS: Record<HeroIconName, string> = {
   carry: 'M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5',
@@ -226,6 +265,9 @@ const HERO_ICON_PATHS: Record<HeroIconName, string> = {
   out: 'M7 17 17 7M9 7h8v8',
   up: 'M4 16l5-5 4 4 7-8M15 7h5v5',
   down: 'M4 8l5 5 4-4 7 8M15 17h5v-5',
+  eye: 'M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  eyeOff:
+    'M3 3l18 18M10.6 10.6A3 3 0 0 0 13.4 13.4M6.7 6.7C4 8.3 2 12 2 12s3.5 6 10 6c1.6 0 3-.3 4.3-.9M9.9 5.2C10.6 5.1 11.3 5 12 5c6.5 0 10 7 10 7s-1 1.7-2.8 3.4',
 };
 
 function HeroIcon({ name }: { name: HeroIconName }) {
