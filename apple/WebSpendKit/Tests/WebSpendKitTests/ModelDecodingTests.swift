@@ -212,7 +212,7 @@ import Testing
         #expect(Money.formatMinor(summary.leftMinor ?? 0, summary.currency) == "₦420,000.00")
         #expect(Money.formatMinor(summary.spentMinor, summary.currency) == "₦780,000.00")
         #expect(Money.formatMinor(summary.incomeMinor, summary.currency) == "₦3,000,000.00")
-        #expect(summary.byCategory.map(\.name) == ["Rent & housing", "Food & groceries", "Transport", "Subscriptions", "Data & airtime"])
+        #expect(summary.byCategory.map(\.name) == ["Rent & housing", "Food & groceries", "Transport", "Subscriptions", "Eating out", "Data & airtime", "Health"])
 
         let page = try await api.transactions(TransactionQuery(q: "Corner"))
         #expect(page.transactions.count == 1)

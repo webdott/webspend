@@ -41,12 +41,16 @@ struct WhereItWent: View {
                     .wsCard()
             } else {
                 let maxMinor = totals.map(\.minor).max() ?? 0
+                // The phone shows every category in full; only the Mac, where this sits beside
+                // the summary card, caps the list.
                 VStack(spacing: 2) {
                     ForEach(totals) { total in
                         CategoryBar(total: total, maxMinor: maxMinor, currency: currency, showUsd: showUsd)
                     }
                 }
+                #if os(macOS)
                 .scrollsWhenLong()
+                #endif
                 .wsCard()
             }
         }

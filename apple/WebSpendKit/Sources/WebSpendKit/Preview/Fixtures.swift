@@ -45,10 +45,12 @@ public enum Fixtures {
             todayPerUsd: rate,
             byCategory: [
                 CategoryTotal(categoryId: "c_rent", name: "Rent & housing", minor: 45_000_000, usdMinor: 30_000, count: 1),
-                CategoryTotal(categoryId: "c_food", name: "Food & groceries", minor: 18_650_000, usdMinor: 12_433, count: 6),
+                CategoryTotal(categoryId: "c_food", name: "Food & groceries", minor: 13_350_000, usdMinor: 8_900, count: 4),
                 CategoryTotal(categoryId: "c_transport", name: "Transport", minor: 7_420_000, usdMinor: 4_947, count: 9),
                 CategoryTotal(categoryId: "c_subs", name: "Subscriptions", minor: 4_130_000, usdMinor: 2_753, count: 3),
+                CategoryTotal(categoryId: "c_eating", name: "Eating out", minor: 3_500_000, usdMinor: 2_333, count: 2),
                 CategoryTotal(categoryId: "c_data", name: "Data & airtime", minor: 2_800_000, usdMinor: 1_867, count: 4),
+                CategoryTotal(categoryId: "c_health", name: "Health", minor: 1_800_000, usdMinor: 1_200, count: 1),
             ],
             uncategorisedCount: 2,
             lastAlertAt: iso(minutesAgo: 12),

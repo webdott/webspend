@@ -1127,6 +1127,13 @@ button {
 .capped--short {
   max-height: 200px;
 }
+/* Phones show the whole list; the page scrolls instead of the box. */
+@media (max-width: 720px) {
+  .capped--wide {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
 
 .list-item {
   display: flex;

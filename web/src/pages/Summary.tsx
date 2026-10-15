@@ -301,7 +301,7 @@ function HeroTile(props: {
 function WhereItWent({ s, showUsd, month }: { s: S; showUsd: boolean; month: string }) {
   const max = Math.max(...s.byCategory.map((c) => c.minor), 1);
   return (
-    <div className="cat-list capped">
+    <div className="cat-list capped capped--wide">
       {s.byCategory.map((c) => (
         <div className="cat-row" key={c.categoryId ?? 'none'}>
           <span className="cat-row__name">
