@@ -112,6 +112,7 @@ export type TransactionsQuery = {
   unsure?: boolean;
   limit?: number;
   before?: string;
+  beforeId?: string;
 };
 
 export const api = {

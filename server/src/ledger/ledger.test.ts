@@ -324,3 +324,31 @@ test('a Grey card spend is logged in dollars with the naira equivalent', async (
   assert.equal(spend.title, 'Example Cloud Subscription');
   assert.equal(spend.bank, 'grey');
 });
+
+test('paging resumes after the last item, so a day sharing one timestamp is not cut short', async () => {
+  const { db, user, accounts } = await fixture();
+  // Imported rows carry a date but no time, so a whole day lands on midnight.
+  for (const amount of [100, 200, 300]) {
+    await recordTransaction(db, user, {
+      accountId: accounts.gtbank!.id,
+      occurredAt: '2026-10-05T00:00:00+01:00',
+      type: 'expense',
+      amountMinor: amount,
+      currency: 'NGN',
+      source: 'import',
+    });
+  }
+  const first = await listTransactions(db, user, { limit: 2 });
+  assert.equal(first.transactions.length, 2);
+  assert.equal(first.hasMore, true);
+  const last = first.transactions.at(-1)!;
+  const second = await listTransactions(db, user, {
+    limit: 2,
+    before: last.occurredAt,
+    beforeId: last.id,
+  });
+  assert.equal(second.transactions.length, 1);
+  assert.equal(second.hasMore, false);
+  const ids = new Set([...first.transactions, ...second.transactions].map((t) => t.id));
+  assert.equal(ids.size, 3);
+});

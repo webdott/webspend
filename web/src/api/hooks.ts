@@ -47,9 +47,12 @@ export function useSummary(month: string) {
 export function useTransactions(query: TransactionsQuery) {
   return useInfiniteQuery({
     queryKey: keys.transactions(query),
-    queryFn: ({ pageParam }) => api.transactions({ ...query, before: pageParam ?? undefined }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => (last.hasMore ? last.transactions.at(-1)?.occurredAt : undefined),
+    queryFn: ({ pageParam }) => api.transactions({ ...query, ...pageParam }),
+    initialPageParam: undefined as { before: string; beforeId: string } | undefined,
+    getNextPageParam: (last) => {
+      const item = last.transactions.at(-1);
+      return last.hasMore && item ? { before: item.occurredAt, beforeId: item.id } : undefined;
+    },
   });
 }
 

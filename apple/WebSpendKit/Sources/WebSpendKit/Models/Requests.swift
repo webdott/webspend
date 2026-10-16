@@ -82,9 +82,11 @@ public struct TransactionQuery: Sendable, Hashable {
     public var type: TransactionType?
     public var limit: Int?
     public var before: String?
+    /// The id of the item `before` came from; the page resumes just after it.
+    public var beforeId: String?
     public var unsure: Bool
 
-    public init(month: String? = nil, q: String? = nil, categoryId: String? = nil, accountId: String? = nil, type: TransactionType? = nil, limit: Int? = nil, before: String? = nil, unsure: Bool = false) {
+    public init(month: String? = nil, q: String? = nil, categoryId: String? = nil, accountId: String? = nil, type: TransactionType? = nil, limit: Int? = nil, before: String? = nil, beforeId: String? = nil, unsure: Bool = false) {
         self.month = month
         self.q = q
         self.categoryId = categoryId
@@ -92,6 +94,7 @@ public struct TransactionQuery: Sendable, Hashable {
         self.type = type
         self.limit = limit
         self.before = before
+        self.beforeId = beforeId
         self.unsure = unsure
     }
 
@@ -106,6 +109,7 @@ public struct TransactionQuery: Sendable, Hashable {
         if let type { items.append(.init(name: "type", value: type.rawValue)) }
         if let limit { items.append(.init(name: "limit", value: String(limit))) }
         if let before { items.append(.init(name: "before", value: before)) }
+        if let beforeId { items.append(.init(name: "beforeId", value: beforeId)) }
         if unsure { items.append(.init(name: "unsure", value: "true")) }
         return items
     }

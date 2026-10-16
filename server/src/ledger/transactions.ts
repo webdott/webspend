@@ -99,6 +99,8 @@ export type TransactionFilters = {
   unsure?: boolean;
   limit?: number;
   before?: string;
+  /** The id of the item `before` came from; the page resumes just after it. */
+  beforeId?: string;
 };
 
 export async function listTransactions(
@@ -120,7 +122,11 @@ export async function listTransactions(
             or ($6 <> 'none' and t.category_id::text = $6))
        and ($7::text is null or t.account_id::text = $7)
        and ($8::text is null or t.type = $8)
-       and ($9::timestamptz is null or t.occurred_at < $9::timestamptz)
+       and ($9::timestamptz is null
+            or t.occurred_at < $9::timestamptz
+            or ($12::uuid is not null and t.occurred_at = $9::timestamptz
+                and (t.created_at, t.id) < (select o.created_at, o.id from transactions o
+                                            where o.id = $12::uuid)))
        and (not $11::boolean or t.unsure_transfer)
      order by t.occurred_at desc, t.created_at desc, t.id desc
      limit $10`,
@@ -136,6 +142,7 @@ export async function listTransactions(
       filters.before ?? null,
       limit + 1,
       filters.unsure ?? false,
+      filters.beforeId ?? null,
     ],
   );
   const page = rows.slice(0, limit);

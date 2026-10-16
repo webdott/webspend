@@ -138,6 +138,7 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
       unsure: q.unsure === 'true',
       limit,
       before: q.before,
+      beforeId: q.beforeId ? transactionId(q.beforeId) : undefined,
     });
     return c.json(body);
   });

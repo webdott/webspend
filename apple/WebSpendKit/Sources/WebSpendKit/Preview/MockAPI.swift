@@ -91,7 +91,11 @@ public actor MockAPI: WebSpendAPI {
         if let accountId = query.accountId { items = items.filter { $0.accountId == accountId } }
         if let type = query.type { items = items.filter { $0.type == type } }
         if query.unsure { items = items.filter { $0.unsureTransfer } }
-        if let before = query.before { items = items.filter { $0.occurredAt < before } }
+        if let beforeId = query.beforeId, let resumeAt = items.firstIndex(where: { $0.id == beforeId }) {
+            items = Array(items[(resumeAt + 1)...])
+        } else if let before = query.before {
+            items = items.filter { $0.occurredAt < before }
+        }
         let limit = query.limit ?? 100
         let page = Array(items.prefix(limit))
         return TransactionsResponse(transactions: page, hasMore: items.count > limit)

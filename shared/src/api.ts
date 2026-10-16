@@ -228,8 +228,10 @@ export type SummaryResponse = Summary;
  *   &accountId=id
  *   &type=expense|income|transfer
  *   &unsure=true        only transactions tagged `unsureTransfer`
- *   &limit=100&before=<occurredAt of the last item seen>
- * Sorted newest first. Clients group by day.
+ *   &limit=100&before=<occurredAt of the last item seen>&beforeId=<its id>
+ * Sorted newest first. Clients group by day. `beforeId` makes the next page resume right after
+ * that item, so a day whose transactions share one timestamp (imports carry no time of day)
+ * is not cut short; `before` alone skips everything at that timestamp.
  */
 export type TransactionsResponse = { transactions: Transaction[]; hasMore: boolean };
 

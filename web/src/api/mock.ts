@@ -555,7 +555,10 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
       if (accountId) list = list.filter((t) => t.accountId === accountId);
       if (type) list = list.filter((t) => t.type === type);
       if (q.get('unsure') === 'true') list = list.filter((t) => t.unsureTransfer);
-      if (before) list = list.filter((t) => t.occurredAt < before);
+      const beforeId = q.get('beforeId');
+      const resumeAt = beforeId ? list.findIndex((t) => t.id === beforeId) : -1;
+      if (resumeAt >= 0) list = list.slice(resumeAt + 1);
+      else if (before) list = list.filter((t) => t.occurredAt < before);
       const page = list.slice(0, limit);
       return { transactions: page.map(view), hasMore: list.length > limit };
     }

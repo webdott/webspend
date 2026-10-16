@@ -388,6 +388,7 @@ final class AppStore {
         defer { isLoadingMore = false }
         var query = transactionQuery
         query.before = last.occurredAt
+        query.beforeId = last.id
         do {
             let page = try await api.transactions(query)
             transactions = .loaded(current + page.transactions)
