@@ -171,6 +171,30 @@ test('Grey card spend is a dollar expense timed in Lagos', () => {
   });
 });
 
+test('Grey wallet funding is dollar income for the amount that landed', () => {
+  const result = parseAlert({
+    from: 'hello@grey.co',
+    subject: 'Wallet Funding Successful',
+    text: sample('grey-wallet-funded'),
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    alert: {
+      bank: 'grey',
+      direction: 'credit',
+      amountMinor: 269_800,
+      currency: 'USD',
+      occurredAt: '2026-10-16T16:20:00+01:00',
+      account: null,
+      balanceAfterMinor: null,
+      counterparty: null,
+      description: 'Wallet funding USD to USD, $2,708.00 tendered',
+      reference: 'SAMPLE8OH4X1',
+      channel: 'transfer',
+    },
+  });
+});
+
 test('a declined Grey card and Grey marketing are not transactions', () => {
   const failed = parseAlert({
     from: 'hello@grey.co',

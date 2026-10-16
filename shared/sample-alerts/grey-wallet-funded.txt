@@ -1,0 +1,18 @@
+Hello TEST,
+
+Your  wallet has been funded successfully! 🤑
+--------------------------------------------------------
+
+The details are shown below:
+
+Transaction Type: USD to USD Amount tendered: $2,708.00 Amount received: $2,698.00 Memo:  Reference: SAMPLE8OH4X1 Date & Time: 10/16/2026 - 3:20 PM UTC
+
+If you didn't initiate this transaction, please contact our support team immediately via in-app or email support@grey.co
+
+Inclusive global banking designed for you
+
+( https://example.invalid/a ) ( https://example.invalid/b )
+
+651 N Broad Street, Suite 206, Middletown, DE 19700
+
+©2026. Grey. All rights reserved.
