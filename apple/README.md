@@ -41,6 +41,37 @@ xcodebuild -project apple/WebSpend.xcodeproj -scheme "WebSpend Mac" \
 open "/tmp/webspend-dd/Build/Products/Debug/WebSpend Mac.app"
 ```
 
+## Install on your own devices
+
+Signing uses the free Personal Team, so there is no App Store or TestFlight; apps are installed
+directly and the iPhone's signature lasts seven days.
+
+```bash
+./scripts/make-dmg.sh        # Mac: apple/build/dist/WebSpend-<version>.dmg (ad-hoc signed)
+./scripts/install-iphone.sh  # iPhone over USB, a fresh seven-day profile each run
+./scripts/make-ipa.sh        # iPhone via AltStore: apple/build/dist/WebSpend-<version>.ipa
+```
+
+### AltStore, so the iPhone refreshes itself
+
+[AltStore](https://altstore.io) re-signs the app with your own Apple ID and renews it over Wi-Fi
+whenever the phone can reach the Mac, so the weekly USB plug-in goes away. One-time setup:
+
+1. Download AltServer for macOS from altstore.io, move it to `/Applications` and open it. It
+   lives in the menu bar.
+2. Plug the iPhone in, unlock it, and in Finder tick "Show this iPhone when on Wi-Fi".
+3. Menu bar icon > Install AltStore > your iPhone. Enter your Apple ID when asked (it goes to
+   Apple only). If AltServer asks to install a Mail plug-in, follow its prompt.
+4. On the phone: Settings > General > VPN & Device Management > trust your Apple ID.
+   Developer Mode must stay on.
+5. Run `./scripts/make-ipa.sh`, then menu bar icon > Sideload .ipa… > pick the file, or AirDrop
+   the file to the phone and open it with AltStore.
+
+After that AltStore renews WebSpend in the background as long as the Mac is awake with AltServer
+running and both are on the same Wi-Fi. Open AltStore > My Apps to refresh by hand or to see
+the days left. A free Apple ID allows three sideloaded apps at a time (AltStore counts as one)
+and ten new app identifiers a week. A new build goes on the phone by repeating step 5.
+
 ## Run
 
 On first launch the sign-in screen offers:
