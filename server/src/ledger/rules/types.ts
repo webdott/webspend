@@ -18,11 +18,14 @@ export type Leg = {
   transferGroupId: string | null;
   source: TransactionSource;
   isFee: boolean;
+  settledAmountMinor: number | null;
+  settledCurrency: Currency | null;
 };
 
 export const LEG_SELECT = `select o.id, o.account_id, oa.bank, o.type, o.direction, o.amount_minor,
     o.currency, o.occurred_at, o.counterparty_name, o.counterparty_bank, o.counterparty_account,
-    o.bank_reference, o.transfer_group_id, o.source, o.is_fee
+    o.bank_reference, o.transfer_group_id, o.source, o.is_fee, o.settled_amount_minor,
+    o.settled_currency
   from transactions o join accounts oa on oa.id = o.account_id`;
 
 export function toLeg(row: Row): Leg {
@@ -42,6 +45,8 @@ export function toLeg(row: Row): Leg {
     transferGroupId: text(row.transfer_group_id),
     source: row.source as TransactionSource,
     isFee: Boolean(row.is_fee),
+    settledAmountMinor: row.settled_amount_minor == null ? null : Number(row.settled_amount_minor),
+    settledCurrency: text(row.settled_currency) as Currency | null,
   };
 }
 

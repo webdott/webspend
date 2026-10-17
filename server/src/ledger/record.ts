@@ -48,6 +48,9 @@ export type RecordInput = {
   importId?: string | null;
   /** The balance the alert reported. Stored as given; nothing is checked against it. */
   balanceAfterMinor?: number | null;
+  /** What the alert said would arrive in the other currency, for pairing a conversion. */
+  settledAmountMinor?: number | null;
+  settledCurrency?: Currency | null;
   isFee?: boolean;
 };
 
@@ -240,7 +243,7 @@ function feeRecorder(db: Db, user: User) {
 const INSERT_COLUMNS = `id, user_id, account_id, occurred_at, type, direction, amount_minor,
   currency, fx_per_usd, counterparty_name, counterparty_bank, counterparty_account,
   bank_description, user_description, category_id, source, bank_reference, raw_alert_id,
-  import_id, is_fee, balance_after_minor, payee_key`;
+  import_id, is_fee, balance_after_minor, payee_key, settled_amount_minor, settled_currency`;
 const INSERT_CASTS: Record<number, string> = {
   0: '::uuid',
   2: '::uuid',
@@ -276,6 +279,8 @@ async function insertRows(db: Db, userId: string, rows: PreparedRow[]): Promise<
       input.isFee ?? false,
       input.balanceAfterMinor ?? null,
       payeeKey,
+      input.settledAmountMinor ?? null,
+      input.settledCurrency ?? null,
     ];
     const placeholders = values.map((value, column) => {
       params.push(value);

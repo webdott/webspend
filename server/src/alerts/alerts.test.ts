@@ -67,7 +67,7 @@ test('Moniepoint credit names the sending bank', () => {
     alert: {
       bank: 'moniepoint',
       direction: 'credit',
-      amountMinor: 74_500_000,
+      amountMinor: 67_000_000,
       currency: 'NGN',
       occurredAt: '2026-10-17T10:19:36+01:00',
       account: '6600000001',
@@ -240,9 +240,10 @@ test('Grey withdrawal is the dollars that left, with the naira payout in the des
         bank: 'Moniepoint Microfinance Bank',
         account: '9060000001',
       },
-      description: 'Withdrawal USD to NGN, ₦745,000.00 received',
+      description: 'Withdrawal USD to NGN, ₦670,000.00 received',
       reference: 'SAMPLE5KPF',
       channel: 'transfer',
+      settled: { amountMinor: 67_000_000, currency: 'NGN' },
     },
   });
 });

@@ -94,6 +94,8 @@ export async function processAlertEmail(
       bankReference: alert.reference,
       rawAlertId: stored.id,
       balanceAfterMinor: alert.balanceAfterMinor,
+      settledAmountMinor: alert.settled?.amountMinor ?? null,
+      settledCurrency: alert.settled?.currency ?? null,
     },
     options,
   );

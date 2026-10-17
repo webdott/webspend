@@ -36,6 +36,8 @@ export type ParsedAlert = {
   description: string;
   reference: string | null;
   channel: 'transfer' | 'card' | 'payment' | 'unknown';
+  /** What the alert says arrived in the other currency, when it converted (Grey withdrawals). */
+  settled?: { amountMinor: number; currency: 'NGN' | 'USD' } | null;
 };
 
 export type ParseFailureReason =

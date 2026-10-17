@@ -253,7 +253,11 @@ async function partnerByAmount(
   return rows[0] ? toLeg(rows[0]) : null;
 }
 
-/** (d) A USD debit from Grey and an NGN credit elsewhere within a day, related by the day's rate. */
+/**
+ * (d) A USD debit from Grey and an NGN credit elsewhere within a day. Grey's withdrawal email
+ * quotes the naira that will arrive, so a credit for exactly that amount is the partner; without
+ * that figure the two are related by the day's rate instead.
+ */
 async function greyConversion(db: Db, userId: string, leg: Leg): Promise<Leg | null> {
   const isDollarLeg = leg.currency === 'USD' && leg.direction === 'debit' && leg.bank === 'grey';
   const isNairaLeg = leg.currency === 'NGN' && leg.direction === 'credit';
@@ -277,8 +281,17 @@ async function greyConversion(db: Db, userId: string, leg: Leg): Promise<Leg | n
       GREY_WINDOW_HOURS * 3600,
     ],
   );
-  for (const row of rows) {
-    const candidate = toLeg(row);
+  const candidates = rows.map(toLeg);
+  const settled = candidates.find((candidate) => {
+    const dollarLeg = isDollarLeg ? leg : candidate;
+    const nairaLeg = isDollarLeg ? candidate : leg;
+    return (
+      dollarLeg.settledCurrency === nairaLeg.currency &&
+      dollarLeg.settledAmountMinor === nairaLeg.amountMinor
+    );
+  });
+  if (settled) return settled;
+  for (const candidate of candidates) {
     const dollarLeg = isDollarLeg ? leg : candidate;
     const nairaLeg = isDollarLeg ? candidate : leg;
     const expectedKobo = await expectedKoboFor(db, dollarLeg);

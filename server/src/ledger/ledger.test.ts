@@ -353,7 +353,7 @@ test('paging resumes after the last item, so a day sharing one timestamp is not 
   assert.equal(ids.size, 3);
 });
 
-test('a Grey withdrawal and the Moniepoint credit it lands as pair up as one transfer', async () => {
+test("a Grey withdrawal pairs with the credit for the naira it quoted, whatever the day's rate", async () => {
   const { db, user, accounts, send } = await fixture();
   const usd = await send({
     from: SENDERS.grey,
@@ -372,8 +372,9 @@ test('a Grey withdrawal and the Moniepoint credit it lands as pair up as one tra
   assert.equal(usdLeg.type, 'transfer');
   assert.equal(ngnLeg.type, 'transfer');
   assert.equal(usdLeg.transferGroupId, ngnLeg.transferGroupId);
-  // $500 at the day's ₦1,500 is ₦750,000; ₦745,000 arrived, so ₦5,000 is the exchange loss.
+  // Grey's ₦1,340 is more than a tenth under the day's ₦1,500, so only the quoted ₦670,000
+  // can have made the match; the gap to the day's rate is still logged as the exchange loss.
   const fee = (await listTransactions(db, user, {})).transactions.find((t) => t.isFee)!;
-  assert.equal(fee.amountMinor, 500_000);
+  assert.equal(fee.amountMinor, 8_000_000);
   assert.equal(fee.accountId, accounts.moniepoint!.id);
 });

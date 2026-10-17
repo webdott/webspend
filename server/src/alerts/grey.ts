@@ -90,6 +90,11 @@ function withdrawal(text: string): ParsedAlert {
     'withdrawal details',
   );
   const payout = PAYOUT.exec(details!);
+  const settledCurrency = received!.startsWith('₦')
+    ? 'NGN'
+    : received!.startsWith('$')
+      ? 'USD'
+      : null;
   return {
     bank: 'grey',
     direction: 'debit',
@@ -104,6 +109,9 @@ function withdrawal(text: string): ParsedAlert {
     description: `Withdrawal ${type!.trim()}, ${received} received`,
     reference: reference!,
     channel: 'transfer',
+    settled: settledCurrency
+      ? { amountMinor: toMinor(received!.slice(1)), currency: settledCurrency }
+      : null,
   };
 }
 
