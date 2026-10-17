@@ -25,6 +25,18 @@ PY
 name=$(python3 -c "import json,sys; d=[x for x in json.load(open('$devices'))['result']['devices'] if x['identifier']=='$udid'][0]; print(d['deviceProperties']['name'])")
 echo "Installing on $name"
 
+# Xcode reuses a profile for as long as it is valid, which can leave the phone with a day of
+# life after a fresh install. Forgetting the old one makes Xcode issue a new seven-day profile.
+for dir in ~/Library/MobileDevice/Provisioning\ Profiles ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles; do
+  [ -d "$dir" ] || continue
+  for profile in "$dir"/*.mobileprovision; do
+    [ -e "$profile" ] || continue
+    if security cms -D -i "$profile" 2>/dev/null | grep -q "$TEAM_ID.dev.webdott.webspend"; then
+      rm -f "$profile"
+    fi
+  done
+done
+
 derived=$(mktemp -d /tmp/webspend-ios.XXXXXX)
 xcodebuild -project apple/WebSpend.xcodeproj -scheme "WebSpend" -configuration Release \
   -destination "id=$udid" -derivedDataPath "$derived" -allowProvisioningUpdates -quiet \
