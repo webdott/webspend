@@ -11,6 +11,7 @@ import type { AlertEmail, ParsedAlert, ParseResult } from './types.ts';
 
 const CARD_SUBJECT = 'Card transaction successful';
 const FUNDING_SUBJECT = 'Wallet Funding Successful';
+const WITHDRAWAL_SUBJECT = 'Withdrawal Successful';
 // Grey also writes about declined cards, logins and offers from the same address. Only mail
 // that sounds like money moving is worth flagging when its layout is unknown.
 const MONEY_SUBJECT = /transaction|received|deposit|payment|withdraw|transfer|funded|funding/i;
@@ -19,18 +20,26 @@ const MERCHANT = /Merchant (.+?) Amount debited \$([\d,]+\.\d{2})/;
 const DESCRIPTION = /Description (.+?) Reference (\S+) /;
 const FUNDING =
   /Transaction Type: (.+?) Amount tendered: \$([\d,]+\.\d{2}) Amount received: \$([\d,]+\.\d{2}) Memo: ?(.*?) ?Reference: (\S+) /;
+const WITHDRAWAL =
+  /Transaction Type: (.+?) Amount tendered: \$([\d,]+\.\d{2}) Amount received: (\S+) (.*?)Reference: (\S+) /;
+// Present when the money went to a bank account; a mobile-money payout has other fields.
+const PAYOUT = /Bank name: (.+?) Account name: (.+?) Account number: (\d+)/;
 const DATE_TIME = /Date & [Tt]ime:? (\d{1,2})\/(\d{1,2})\/(\d{4}) - (\d{1,2}):(\d{2}) (AM|PM) UTC/;
 
 /**
- * Parses Grey's two money emails. "Card transaction successful" is a dollar card spend with the
+ * Parses Grey's three money emails. "Card transaction successful" is a dollar card spend with the
  * merchant, a reference and a UTC time. "Wallet Funding Successful" is money arriving in the
  * dollar wallet: the credit is the amount received, since the tendered amount less Grey's fee is
- * what actually landed. Neither email carries a balance, so the balance check is skipped for Grey.
+ * what actually landed. "Withdrawal Successful" is dollars leaving, usually converted to naira
+ * and sent to a bank account; the debit is the dollars tendered and the naira that arrived is
+ * matched to the receiving bank's own credit alert by the transfer rules. None of the emails
+ * carries a balance, so the balance check is skipped for Grey.
  */
 export const parseGreyAlert = reportingLayoutErrors((email: AlertEmail): ParseResult => {
   const subject = email.subject.trim();
   if (subject === CARD_SUBJECT) return { ok: true, alert: cardSpend(flatten(email.text)) };
   if (subject === FUNDING_SUBJECT) return { ok: true, alert: walletFunding(flatten(email.text)) };
+  if (subject === WITHDRAWAL_SUBJECT) return { ok: true, alert: withdrawal(flatten(email.text)) };
   if (subject === 'Card transaction failed' || !MONEY_SUBJECT.test(subject)) {
     return { ok: false, reason: 'not_a_transaction', detail: subject };
   }
@@ -69,6 +78,30 @@ function walletFunding(text: string): ParsedAlert {
     // The email never says who sent the money, only the rails it came over.
     counterparty: null,
     description: `Wallet funding ${type!.trim()}, $${tendered} tendered${note ? `: ${note}` : ''}`,
+    reference: reference!,
+    channel: 'transfer',
+  };
+}
+
+function withdrawal(text: string): ParsedAlert {
+  const [type, tendered, received, details, reference] = capture(
+    text,
+    WITHDRAWAL,
+    'withdrawal details',
+  );
+  const payout = PAYOUT.exec(details!);
+  return {
+    bank: 'grey',
+    direction: 'debit',
+    amountMinor: toMinor(tendered!),
+    currency: 'USD',
+    occurredAt: occurredAt(text),
+    account: null,
+    balanceAfterMinor: null,
+    counterparty: payout
+      ? { name: payout[2]!.trim(), bank: payout[1]!.trim(), account: payout[3]! }
+      : null,
+    description: `Withdrawal ${type!.trim()}, ${received} received`,
     reference: reference!,
     channel: 'transfer',
   };

@@ -1,0 +1,35 @@
+Hi TEST,
+
+We wish to inform you that a credit transaction occurred on your account with us. Log in to Business Banking ( https://example.invalid/ls/click?upn=sample ) for more details.
+
+Credit Amount
+
+745,000.00
+
+Transaction Details
+
+Account Balance:
+
+N 872,136.47
+
+Account Number:
+
+6600000001
+
+Sender's Name:
+
+from AWE MICROFINANCE BANK LIMITED
+
+Date & Time:
+
+17 Oct, 2026 | 10:19:36 AM
+
+Narration:
+
+TRF FRM AWE MICROFINANCE BANK LIMITED
+
+If you experience any problems kindly contact us at support@moniepoint.com or send us a WhatsApp message at +234 908 843 0803
+
+Follow us on:
+
+( https://example.invalid/a ) ( https://example.invalid/b )

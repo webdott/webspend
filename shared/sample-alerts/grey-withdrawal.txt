@@ -1,0 +1,20 @@
+Hello TEST,
+
+Your withdrawal was successful 😀
+--------------------------------
+
+The details are shown below:
+
+ 
+
+Transaction Type: USD to NGN Amount tendered: $500.00 Amount received: ₦745,000.00 Network:  Phone number: 9060000001 Bank name: Moniepoint Microfinance Bank Account name: SAMPLE LLC LTD Account number: 9060000001 Reference: SAMPLE5KPF Date & Time: 10/17/2026 - 9:19 AM UTC
+
+If you didn't initiate this transaction, please contact our support team immediately via in-app or email support@grey.co
+
+Inclusive global banking designed for you
+
+( https://example.invalid/a ) ( https://example.invalid/b )
+
+651 N Broad Street, Suite 206, Middletown, DE 19700
+
+©2026. Grey. All rights reserved.

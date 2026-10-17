@@ -9,10 +9,16 @@ import {
 } from './text.ts';
 import type { AlertEmail, Counterparty, ParsedAlert, ParseResult } from './types.ts';
 
-// An airtime purchase also produces a normal debit alert, so its separate receipt is skipped.
-const NON_TRANSACTION_SUBJECTS = ['Moniepoint Successful Login', 'Airtime Purchase Successful'];
+// Airtime and electricity purchases also produce a normal debit alert, so their separate
+// receipts are skipped.
+const NON_TRANSACTION_SUBJECTS = [
+  'Moniepoint Successful Login',
+  'Airtime Purchase Successful',
+  'Electricity Payment Successful',
+];
 
-const DEBIT_AMOUNT = /a debit transaction occurred.*? Debit Amount ([\d,]+\.\d{2})/;
+const AMOUNT = /a (debit|credit) transaction occurred.*? (?:Debit|Credit) Amount ([\d,]+\.\d{2})/;
+const SENDER = /Sender's Name: (?:from )?(.+?) Date & Time:/;
 const BALANCE = /Account Balance: N ([\d,]+\.\d{2})/;
 const ACCOUNT = /Account Number: (\d+)/;
 const DATE_TIME = /Date & Time: (\d{2}) (\w{3}), (\d{4}) \| (\d{2}):(\d{2}):(\d{2}) (AM|PM)/;
@@ -23,14 +29,18 @@ const TRANSFER_NARRATION = /^TRANSFER TO (.+) (\*+\d+)\/(.+)$/;
 // as they are seen in real alerts; an unlisted bank leaves the whole text in `name`.
 const BANK_NAMES_IN_NARRATIONS = ['Guaranty Trust Bank'];
 
-/** Parses Moniepoint's "Debit alert!" email. No credit alert has been seen yet, so one would be flagged. */
+/**
+ * Parses Moniepoint's "Debit alert!" and "Credit alert!" emails, which share one layout. A debit
+ * narration names the recipient and their bank; a credit names only the sending bank.
+ */
 export const parseMoniepointAlert = reportingLayoutErrors((email: AlertEmail): ParseResult => {
   if (NON_TRANSACTION_SUBJECTS.includes(email.subject.trim())) {
     return { ok: false, reason: 'not_a_transaction', detail: email.subject };
   }
 
   const text = flatten(email.text);
-  const [amount] = capture(text, DEBIT_AMOUNT, 'Debit Amount');
+  const [kind, amount] = capture(text, AMOUNT, 'Debit or Credit Amount');
+  const direction = kind === 'credit' ? 'credit' : 'debit';
   const [balance] = capture(text, BALANCE, 'Account Balance');
   const [account] = capture(text, ACCOUNT, 'Account Number');
   const [day, month, year, hour, minute, second, meridiem] = capture(
@@ -39,11 +49,12 @@ export const parseMoniepointAlert = reportingLayoutErrors((email: AlertEmail): P
     'Date & Time',
   );
   const [narration] = capture(text, NARRATION, 'Narration');
-  const transfer = TRANSFER_NARRATION.exec(narration!);
+  const transfer = direction === 'debit' ? TRANSFER_NARRATION.exec(narration!) : null;
+  const sender = direction === 'credit' ? SENDER.exec(text)?.[1]?.trim() : undefined;
 
   const alert: ParsedAlert = {
     bank: 'moniepoint',
-    direction: 'debit',
+    direction,
     amountMinor: toMinor(amount!),
     currency: 'NGN',
     occurredAt: lagosIso({
@@ -56,10 +67,14 @@ export const parseMoniepointAlert = reportingLayoutErrors((email: AlertEmail): P
     }),
     account: account!,
     balanceAfterMinor: toMinor(balance!),
-    counterparty: transfer ? recipient(transfer[1]!, transfer[2]!) : null,
+    counterparty: transfer
+      ? recipient(transfer[1]!, transfer[2]!)
+      : sender
+        ? { name: sender, bank: null, account: null }
+        : null,
     description: narration!,
     reference: transfer ? transfer[3]! : null,
-    channel: transfer ? 'transfer' : 'unknown',
+    channel: transfer || /^TRF\b|^TRANSFER\b/.test(narration!) ? 'transfer' : 'unknown',
   };
   return { ok: true, alert };
 });

@@ -352,3 +352,28 @@ test('paging resumes after the last item, so a day sharing one timestamp is not 
   const ids = new Set([...first.transactions, ...second.transactions].map((t) => t.id));
   assert.equal(ids.size, 3);
 });
+
+test('a Grey withdrawal and the Moniepoint credit it lands as pair up as one transfer', async () => {
+  const { db, user, accounts, send } = await fixture();
+  const usd = await send({
+    from: SENDERS.grey,
+    subject: 'Withdrawal Successful',
+    text: sample('grey-withdrawal'),
+  });
+  const ngn = await send({
+    from: SENDERS.moniepoint,
+    subject: 'Credit alert!',
+    text: sample('moniepoint-credit'),
+  });
+  assert.equal(usd.status, 'parsed', usd.detail ?? '');
+  assert.equal(ngn.status, 'parsed', ngn.detail ?? '');
+  const usdLeg = await getTransaction(db, user, usd.transactionId!);
+  const ngnLeg = await getTransaction(db, user, ngn.transactionId!);
+  assert.equal(usdLeg.type, 'transfer');
+  assert.equal(ngnLeg.type, 'transfer');
+  assert.equal(usdLeg.transferGroupId, ngnLeg.transferGroupId);
+  // $500 at the day's ₦1,500 is ₦750,000; ₦745,000 arrived, so ₦5,000 is the exchange loss.
+  const fee = (await listTransactions(db, user, {})).transactions.find((t) => t.isFee)!;
+  assert.equal(fee.amountMinor, 500_000);
+  assert.equal(fee.accountId, accounts.moniepoint!.id);
+});

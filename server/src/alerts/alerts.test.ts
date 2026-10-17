@@ -56,6 +56,30 @@ test('OPay payment names the processor, not the shop', () => {
   });
 });
 
+test('Moniepoint credit names the sending bank', () => {
+  const result = parseAlert({
+    from: 'no-reply@moniepoint.com',
+    subject: 'Credit alert!',
+    text: sample('moniepoint-credit'),
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    alert: {
+      bank: 'moniepoint',
+      direction: 'credit',
+      amountMinor: 74_500_000,
+      currency: 'NGN',
+      occurredAt: '2026-10-17T10:19:36+01:00',
+      account: '6600000001',
+      balanceAfterMinor: 87_213_647,
+      counterparty: { name: 'AWE MICROFINANCE BANK LIMITED', bank: null, account: null },
+      description: 'TRF FRM AWE MICROFINANCE BANK LIMITED',
+      reference: null,
+      channel: 'transfer',
+    },
+  });
+});
+
 test('Moniepoint debit splits the recipient from their bank', () => {
   const result = parseAlert({
     from: 'no-reply@moniepoint.com',
@@ -190,6 +214,34 @@ test('Grey wallet funding is dollar income for the amount that landed', () => {
       counterparty: null,
       description: 'Wallet funding USD to USD, $2,708.00 tendered',
       reference: 'SAMPLE8OH4X1',
+      channel: 'transfer',
+    },
+  });
+});
+
+test('Grey withdrawal is the dollars that left, with the naira payout in the description', () => {
+  const result = parseAlert({
+    from: 'hello@grey.co',
+    subject: 'Withdrawal Successful',
+    text: sample('grey-withdrawal'),
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    alert: {
+      bank: 'grey',
+      direction: 'debit',
+      amountMinor: 50_000,
+      currency: 'USD',
+      occurredAt: '2026-10-17T10:19:00+01:00',
+      account: null,
+      balanceAfterMinor: null,
+      counterparty: {
+        name: 'SAMPLE LLC LTD',
+        bank: 'Moniepoint Microfinance Bank',
+        account: '9060000001',
+      },
+      description: 'Withdrawal USD to NGN, ₦745,000.00 received',
+      reference: 'SAMPLE5KPF',
       channel: 'transfer',
     },
   });
