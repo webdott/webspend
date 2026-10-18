@@ -179,6 +179,10 @@ public actor APIClient: WebSpendAPI {
         try await send("POST", "/api/intake/poll")
     }
 
+    public func rerunAlerts() async throws -> RerunAlertsResponse {
+        try await send("POST", "/api/alerts/rerun")
+    }
+
     public func export(_ query: ExportQuery) async throws -> ExportedFile {
         let (data, response) = try await perform("GET", "/api/exports", query: query.queryItems, body: nil, headers: ["Accept": "*/*"])
         let disposition = response.value(forHTTPHeaderField: "Content-Disposition") ?? ""

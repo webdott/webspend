@@ -83,6 +83,21 @@ public enum RawAlertStatus: String, Codable, CaseIterable, Sendable, Hashable {
     case beforeTrackingFrom = "before_tracking_from"
     case failedAuthentication = "failed_authentication"
     case duplicate
+
+    /// A later parser fix can change these; the other statuses were decided on purpose.
+    public var canBeRerun: Bool { self == .unrecognisedLayout || self == .unknownSender }
+
+    public var label: String {
+        switch self {
+        case .parsed: "Parsed"
+        case .unknownSender: "Unknown sender"
+        case .notATransaction: "Not a transaction"
+        case .unrecognisedLayout: "Unrecognised layout"
+        case .beforeTrackingFrom: "Before tracking started"
+        case .failedAuthentication: "Failed sender check"
+        case .duplicate: "Duplicate"
+        }
+    }
 }
 
 public enum ImportFormat: String, Codable, CaseIterable, Sendable, Hashable {

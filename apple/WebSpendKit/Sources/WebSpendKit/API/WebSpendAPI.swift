@@ -25,6 +25,8 @@ public protocol WebSpendAPI: Sendable {
     func deleteAccount(id: String) async throws
 
     func failedAlerts() async throws -> [RawAlert]
+    /// Reads the unread alerts again with the current parsers and logs the ones that now parse.
+    func rerunAlerts() async throws -> RerunAlertsResponse
     func rates(day: String?) async throws -> [FxRate]
     func refreshRates() async throws -> [FxRate]
 

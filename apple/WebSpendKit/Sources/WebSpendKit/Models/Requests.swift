@@ -472,6 +472,16 @@ public struct ExportedFile: Sendable, Hashable {
     }
 }
 
+/// `POST /api/alerts/rerun`: the unread alerts read again with the current parsers.
+public struct RerunAlertsResponse: Codable, Sendable, Hashable {
+    public var checked: Int
+    public var logged: Int
+    public init(checked: Int, logged: Int) {
+        self.checked = checked
+        self.logged = logged
+    }
+}
+
 /// `POST /api/intake/poll`: an inbox check ahead of the regular poll.
 public struct PollInboxResponse: Codable, Sendable, Hashable {
     public var polled: Bool

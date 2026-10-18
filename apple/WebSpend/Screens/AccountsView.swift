@@ -14,6 +14,7 @@ struct AccountsView: View {
                 #endif
                 trackedBanks
                 myAccounts
+                unreadAlerts
                 #if os(iOS)
                 NavigationLink { ImportView() } label: { Text("Import a statement") }
                     .buttonStyle(LinkButtonStyle())
@@ -26,8 +27,11 @@ struct AccountsView: View {
         .wsPage()
         .navigationTitle("Accounts")
         .refreshable {
-            await store.loadAccounts()
+            async let a: Void = store.loadAccounts()
+            async let b: Void = store.loadFailedAlerts()
+            _ = await (a, b)
         }
+        .task { await store.loadFailedAlerts() }
         .sheet(isPresented: $showAdd) {
             AddAccountSheet().environment(store)
         }
@@ -97,6 +101,56 @@ struct AccountsView: View {
                             }
                             .padding(.vertical, 8)
                             if index < own.count - 1 { Hairline() }
+                        }
+                    }
+                    .scrollsWhenLong()
+                    .wsCard(padding: 14)
+                }
+            }
+        }
+    }
+
+    // MARK: Alerts that could not be read
+
+    @ViewBuilder private var unreadAlerts: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle("Alerts that could not be read") {
+                if store.failedAlerts.value?.contains(where: { $0.status.canBeRerun }) == true {
+                    Button(store.isRerunningAlerts ? "Re-running…" : "Re-run") {
+                        Task { await store.rerunAlerts() }
+                    }
+                    .buttonStyle(LinkButtonStyle())
+                    .disabled(store.isRerunningAlerts)
+                }
+            }
+            Text("Bank emails whose layout WebSpend does not know yet. Logins, receipts and marketing are left out on purpose. After a parser update, Re-run reads these again and logs the ones it now understands.")
+                .font(.ws(13)).foregroundStyle(WS.muted)
+            switch store.failedAlerts {
+            case .idle, .loading:
+                LoadingState().wsCard()
+            case let .failed(message):
+                ErrorState(message: message) { Task { await store.loadFailedAlerts() } }.wsCard()
+            case let .loaded(alerts):
+                if alerts.isEmpty {
+                    EmptyState(title: "Every alert so far was read", message: "Ones that cannot be are kept here for a parser fix.").wsCard()
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(alerts.enumerated()), id: \.element.id) { index, alert in
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(alert.subject.isEmpty ? "(no subject)" : alert.subject)
+                                        .font(.ws(15, .medium)).foregroundStyle(WS.ink)
+                                    Text("\(alert.sender) · \(Dates.full(iso: alert.receivedAt))")
+                                        .font(.ws(12)).foregroundStyle(WS.muted)
+                                    if let detail = alert.detail, !detail.isEmpty {
+                                        Text(detail).font(.ws(12)).foregroundStyle(WS.muted)
+                                    }
+                                }
+                                Spacer()
+                                Text(alert.status.label).font(.ws(12, .medium)).foregroundStyle(WS.muted)
+                            }
+                            .padding(.vertical, 8)
+                            if index < alerts.count - 1 { Hairline() }
                         }
                     }
                     .scrollsWhenLong()

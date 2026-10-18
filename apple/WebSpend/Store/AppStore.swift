@@ -77,6 +77,8 @@ final class AppStore {
     var activityMonth: String?
     var categories: Loadable<[Category]> = .idle
     var accounts: Loadable<[Account]> = .idle
+    var failedAlerts: Loadable<[RawAlert]> = .idle
+    var isRerunningAlerts = false
     var rates: [FxRate] = []
 
     var macSection: MacSection = .summary
@@ -414,6 +416,43 @@ final class AppStore {
         } catch {
             accounts = .failed(describe(error))
         }
+    }
+
+    func loadFailedAlerts() async {
+        if failedAlerts.value == nil { failedAlerts = .loading }
+        do {
+            failedAlerts = .loaded(try await api.failedAlerts())
+        } catch {
+            failedAlerts = .failed(describe(error))
+        }
+    }
+
+    /// Reads the unread alerts again. Anything logged changes the ledger, so the screens reload.
+    func rerunAlerts() async {
+        guard !isRerunningAlerts else { return }
+        isRerunningAlerts = true
+        defer { isRerunningAlerts = false }
+        do {
+            let result = try await api.rerunAlerts()
+            toast = Self.rerunSummary(result)
+            await loadFailedAlerts()
+            if result.logged > 0 {
+                async let a: Void = loadSummary()
+                async let b: Void = loadTransactions()
+                async let c: Void = loadAccounts()
+                _ = await (a, b, c)
+            }
+        } catch {
+            toast = describe(error)
+        }
+    }
+
+    static func rerunSummary(_ result: RerunAlertsResponse) -> String {
+        if result.checked == 0 { return "Nothing to re-run." }
+        let tried = result.checked == 1 ? "1 alert" : "\(result.checked) alerts"
+        if result.logged == 0 { return "Checked \(tried); none can be read yet." }
+        let added = result.logged == 1 ? "1 transaction" : "\(result.logged) transactions"
+        return "Checked \(tried) and logged \(added)."
     }
 
     func loadRates() async {

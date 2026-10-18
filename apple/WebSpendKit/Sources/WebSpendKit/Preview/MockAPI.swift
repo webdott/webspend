@@ -275,6 +275,12 @@ public actor MockAPI: WebSpendAPI {
 
     public func failedAlerts() async throws -> [RawAlert] { Fixtures.failedAlerts }
 
+    public func rerunAlerts() async throws -> RerunAlertsResponse {
+        await pause()
+        let unread = Fixtures.failedAlerts.filter { $0.status.canBeRerun }.count
+        return RerunAlertsResponse(checked: unread, logged: 0)
+    }
+
     public func rates(day: String?) async throws -> [FxRate] { Fixtures.rates }
 
     public func refreshRates() async throws -> [FxRate] {
