@@ -19,6 +19,7 @@ import {
   monthSchema,
   NO_ACCOUNT,
   type RatesResponse,
+  type RerunAlertsResponse,
   type TransactionsResponse,
   type TransactionType,
   type Currency,
@@ -32,7 +33,7 @@ import type { Config } from '../config.ts';
 import type { Db } from '../db/index.ts';
 import { buildExport } from '../export/index.ts';
 import { commitImport, previewImport } from '../import/index.ts';
-import { listAlerts, processAlertEmail } from '../intake/pipeline.ts';
+import { listAlerts, processAlertEmail, rerunAlerts } from '../intake/pipeline.ts';
 import { pollNow } from '../intake/poller.ts';
 import {
   createAccount,
@@ -259,6 +260,11 @@ export function apiRoutes({ db, config, rateSource }: Deps): Hono<AppEnv> {
   api.get('/alerts', async (c) => {
     const filter = c.req.query('status') === 'failed' ? 'failed' : 'all';
     const body: AlertsResponse = { alerts: await listAlerts(db, c.get('user').id, filter) };
+    return c.json(body);
+  });
+
+  api.post('/alerts/rerun', async (c) => {
+    const body: RerunAlertsResponse = await rerunAlerts(db, c.get('user'), recordOptions);
     return c.json(body);
   });
 

@@ -302,8 +302,18 @@ export type UpdateAccountRequest = {
 export type AccountResponse = { account: Account };
 /** DELETE /api/accounts/:id → 204. Refused (409) while it has transactions. */
 
-/** GET /api/alerts?status=failed  — alerts that could not be turned into transactions */
+/**
+ * GET /api/alerts?status=failed — alerts that could not be read: an unrecognised layout, an
+ * unknown sender, or mail that failed the sender check. Logins, receipts and other mail ruled out
+ * on purpose are not listed.
+ */
 export type AlertsResponse = { alerts: RawAlert[] };
+/**
+ * POST /api/alerts/rerun — pushes the unread alerts back through the current parsers, so emails
+ * kept before their layout was supported get logged. `checked` is how many were tried, `logged`
+ * how many became transactions.
+ */
+export type RerunAlertsResponse = { checked: number; logged: number };
 
 /** GET /api/rates?day=YYYY-MM-DD (defaults to today) */
 export type RatesResponse = { rates: FxRate[] };

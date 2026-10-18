@@ -54,33 +54,104 @@ export async function processAlertEmail(
     });
   }
 
-  const parsed = parseAlert({ from: email.from, subject: email.subject, text: email.text });
-  if (!parsed.ok) return store(db, email, { status: parsed.reason, detail: parsed.detail });
+  const outcome = await outcomeFor(db, email.userId, email);
+  const stored = await store(db, email, outcome);
+  if (outcome.status !== 'parsed') return stored;
+  return logTransaction(db, user, stored, outcome, options);
+}
+
+/** The statuses a later parser fix can change; the rest were ruled out on purpose. */
+const RERUNNABLE = ['unrecognised_layout', 'unknown_sender'];
+
+/**
+ * Pushes every alert that could not be read back through the current parsers, so an email kept
+ * before its layout was supported is logged without being fetched again. Returns how many were
+ * checked and how many became transactions.
+ */
+export async function rerunAlerts(
+  db: Db,
+  user: User,
+  options: RecordOptions = {},
+): Promise<{ checked: number; logged: number }> {
+  const rows = await db.query(
+    `select id, sender, subject, body_text from raw_alerts
+      where user_id = $1 and status = any($2::text[]) order by received_at`,
+    [user.id, RERUNNABLE],
+  );
+  let logged = 0;
+  for (const row of rows) {
+    const outcome = await outcomeFor(db, user.id, {
+      from: String(row.sender),
+      subject: String(row.subject),
+      text: String(row.body_text),
+    });
+    const [updated] = await db.query(
+      `update raw_alerts set status = $2, detail = $3, parsed = $4::jsonb, account_id = $5::uuid
+        where id = $1::uuid returning ${COLUMNS}`,
+      [
+        row.id,
+        outcome.status,
+        outcome.detail ?? null,
+        outcome.parsed ? JSON.stringify(outcome.parsed) : null,
+        outcome.accountId ?? null,
+      ],
+    );
+    if (outcome.status !== 'parsed') continue;
+    await logTransaction(db, user, toRawAlert(updated!), outcome, options);
+    logged += 1;
+  }
+  return { checked: rows.length, logged };
+}
+
+type Outcome = {
+  status: RawAlertStatus;
+  detail?: string;
+  parsed?: ParsedAlert;
+  accountId?: string;
+};
+
+/** What an email amounts to: a transaction for a tracked account, or the reason it is not. */
+async function outcomeFor(
+  db: Db,
+  userId: string,
+  email: { from: string; subject: string; text: string },
+): Promise<Outcome> {
+  const parsed = parseAlert(email);
+  if (!parsed.ok) return { status: parsed.reason, detail: parsed.detail };
 
   const alert = parsed.alert;
-  const account = await findTrackedAccount(db, email.userId, alert);
+  const account = await findTrackedAccount(db, userId, alert);
   if (!account) {
-    return store(db, email, {
+    return {
       status: 'before_tracking_from',
       detail: `no ${alert.bank} account is tracked`,
       parsed: alert,
-    });
+    };
   }
   if (account.trackingFrom && Date.parse(alert.occurredAt) < Date.parse(account.trackingFrom)) {
-    return store(db, email, {
+    return {
       status: 'before_tracking_from',
       detail: `happened before tracking started on ${account.trackingFrom}`,
       parsed: alert,
       accountId: account.id,
-    });
+    };
   }
+  return { status: 'parsed', parsed: alert, accountId: account.id };
+}
 
-  const stored = await store(db, email, { status: 'parsed', parsed: alert, accountId: account.id });
+async function logTransaction(
+  db: Db,
+  user: User,
+  stored: RawAlert,
+  outcome: Outcome,
+  options: RecordOptions,
+): Promise<RawAlert> {
+  const alert = outcome.parsed!;
   const { transaction } = await recordTransaction(
     db,
     user,
     {
-      accountId: account.id,
+      accountId: outcome.accountId!,
       occurredAt: alert.occurredAt,
       type: alert.direction === 'debit' ? 'expense' : 'income',
       direction: alert.direction,
@@ -117,11 +188,7 @@ async function findTrackedAccount(db: Db, userId: string, alert: ParsedAlert) {
   return byNumber ?? candidates[0] ?? null;
 }
 
-async function store(
-  db: Db,
-  email: IncomingEmail,
-  result: { status: RawAlertStatus; detail?: string; parsed?: ParsedAlert; accountId?: string },
-): Promise<RawAlert> {
+async function store(db: Db, email: IncomingEmail, result: Outcome): Promise<RawAlert> {
   const [row] = await db.query(
     `insert into raw_alerts (user_id, account_id, message_id, received_at, sender, subject,
        body_text, status, detail, parsed)
@@ -151,7 +218,8 @@ export async function listAlerts(
 ): Promise<RawAlert[]> {
   const rows = await db.query(
     `select ${COLUMNS} from raw_alerts
-      where user_id = $1 and ($2 = 'all' or status not in ('parsed', 'duplicate'))
+      where user_id = $1
+        and ($2 = 'all' or status in ('unrecognised_layout', 'unknown_sender', 'failed_authentication'))
       order by received_at desc limit $3`,
     [userId, filter, limit],
   );
