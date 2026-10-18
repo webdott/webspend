@@ -394,6 +394,13 @@ const alerts: RawAlert[] = [
   },
 ];
 
+const FAILED = new Set<RawAlert['status']>([
+  'unrecognised_layout',
+  'unknown_sender',
+  'failed_authentication',
+]);
+const RERUNNABLE = new Set<RawAlert['status']>(['unrecognised_layout', 'unknown_sender']);
+
 const payeeRules = new Map<string, string>();
 
 function perUsdFor(currency: Currency): number {
@@ -725,7 +732,15 @@ export async function mockRequest(method: string, url: string, body?: unknown): 
   }
 
   if (path === '/api/intake/poll' && method === 'POST') return { polled: false, added: 0 };
-  if (path === '/api/alerts') return { alerts };
+  if (path === '/api/alerts/rerun' && method === 'POST') {
+    const unread = alerts.filter((a) => RERUNNABLE.has(a.status));
+    return { checked: unread.length, logged: 0 };
+  }
+  if (path === '/api/alerts') {
+    return {
+      alerts: q.get('status') === 'failed' ? alerts.filter((a) => FAILED.has(a.status)) : alerts,
+    };
+  }
 
   if (path === '/api/rates' || path === '/api/rates/refresh') {
     const day = q.get('day') ?? new Date().toISOString().slice(0, 10);

@@ -11,6 +11,7 @@ import type {
   AccountResponse,
   AccountsResponse,
   AlertsResponse,
+  RerunAlertsResponse,
   CategoriesResponse,
   CategoryResponse,
   CreateAccountRequest,
@@ -151,6 +152,7 @@ export const api = {
 
   failedAlerts: () =>
     request<AlertsResponse>('GET', '/api/alerts', undefined, { status: 'failed' }),
+  rerunAlerts: () => request<RerunAlertsResponse>('POST', '/api/alerts/rerun'),
 
   rates: (day?: string) => request<RatesResponse>('GET', '/api/rates', undefined, { day }),
 

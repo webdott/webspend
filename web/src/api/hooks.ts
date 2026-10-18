@@ -72,6 +72,19 @@ export function useFailedAlerts(enabled = true) {
   return useQuery({ queryKey: keys.alerts, queryFn: api.failedAlerts, enabled });
 }
 
+/** Re-reads the unread alerts with the current parsers; whatever gets logged changes the ledger. */
+export function useRerunAlerts() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateLedger();
+  return useMutation({
+    mutationFn: () => api.rerunAlerts(),
+    onSuccess: async (result) => {
+      await qc.invalidateQueries({ queryKey: keys.alerts });
+      if (result.logged > 0) await invalidate();
+    },
+  });
+}
+
 export function useRates() {
   return useQuery({ queryKey: keys.rates, queryFn: () => api.rates(), staleTime: 10 * 60_000 });
 }

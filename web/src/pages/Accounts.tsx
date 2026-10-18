@@ -9,6 +9,7 @@ import {
   useAccounts,
   useFailedAlerts,
   useInvalidateLedger,
+  useRerunAlerts,
   useUpdateAccount,
 } from '../api/hooks.ts';
 import { EmptyState, ErrorState, LoadingState, Notice, errorMessage } from '../components/ui.tsx';
@@ -380,6 +381,10 @@ const ALERT_STATUS: Record<RawAlert['status'], string> = {
 function FailedAlerts() {
   const [open, setOpen] = useState(false);
   const alerts = useFailedAlerts(open);
+  const rerun = useRerunAlerts();
+  const rerunnable = alerts.data?.alerts.some(
+    (a) => a.status === 'unrecognised_layout' || a.status === 'unknown_sender',
+  );
   return (
     <section>
       <details onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
@@ -394,28 +399,64 @@ function FailedAlerts() {
             <LoadingState />
           ) : alerts.isError ? (
             <ErrorState error={alerts.error} retry={() => alerts.refetch()} />
-          ) : alerts.data.alerts.length === 0 ? (
-            <EmptyState>
-              Every alert so far was read. Ones that cannot be are kept here for a parser fix.
-            </EmptyState>
           ) : (
-            <ul className="list list--scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {alerts.data.alerts.map((a) => (
-                <li key={a.id} className="list-item" style={{ alignItems: 'flex-start' }}>
-                  <span className="list-item__text">
-                    <span style={{ fontWeight: 500 }}>{a.subject || '(no subject)'}</span>
-                    <span className="caption">
-                      {a.sender} · {formatDateTime(a.receivedAt)}
-                    </span>
-                    {a.detail ? <span className="small muted">{a.detail}</span> : null}
-                  </span>
-                  <span className="status">{ALERT_STATUS[a.status]}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="row" style={{ justifyContent: 'space-between', gap: 12 }}>
+                <p className="small muted" style={{ margin: 0 }}>
+                  Bank emails whose layout WebSpend does not know yet. Logins, receipts and
+                  marketing are left out on purpose. After a parser update, Re-run reads these again
+                  and logs the ones it now understands.
+                </p>
+                {rerunnable ? (
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    disabled={rerun.isPending}
+                    onClick={() => rerun.mutate()}
+                  >
+                    {rerun.isPending ? 'Re-running…' : 'Re-run'}
+                  </button>
+                ) : null}
+              </div>
+              {rerun.isError ? <Notice kind="error">{errorMessage(rerun.error)}</Notice> : null}
+              {rerun.isSuccess ? (
+                <Notice kind={rerun.data.logged > 0 ? 'ok' : 'info'}>
+                  {rerunSummary(rerun.data)}
+                </Notice>
+              ) : null}
+              {alerts.data.alerts.length === 0 ? (
+                <EmptyState>Every alert so far was read.</EmptyState>
+              ) : (
+                <ul
+                  className="list list--scroll"
+                  style={{ listStyle: 'none', margin: 0, padding: 0 }}
+                >
+                  {alerts.data.alerts.map((a) => (
+                    <li key={a.id} className="list-item" style={{ alignItems: 'flex-start' }}>
+                      <span className="list-item__text">
+                        <span style={{ fontWeight: 500 }}>{a.subject || '(no subject)'}</span>
+                        <span className="caption">
+                          {a.sender} · {formatDateTime(a.receivedAt)}
+                        </span>
+                        {a.detail ? <span className="small muted">{a.detail}</span> : null}
+                      </span>
+                      <span className="status">{ALERT_STATUS[a.status]}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
       </details>
     </section>
   );
+}
+
+function rerunSummary({ checked, logged }: { checked: number; logged: number }) {
+  if (checked === 0) return 'Nothing to re-run.';
+  const tried = checked === 1 ? '1 alert' : `${checked} alerts`;
+  if (logged === 0) return `Checked ${tried}; none can be read yet.`;
+  const added = logged === 1 ? '1 transaction' : `${logged} transactions`;
+  return `Checked ${tried} and logged ${added}.`;
 }
