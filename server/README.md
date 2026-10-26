@@ -5,7 +5,7 @@ clients of this one server. The contract they share is `shared/src/api.ts`.
 
 ## Run
 
-Needs Node 22.18 or newer (it runs the TypeScript directly) and pnpm.
+Needs Node 22.23.4+, 24.22.1+ or 26.12.1+ (it runs the TypeScript directly; older builds have the Node2Shell Brotli bug) and pnpm.
 
 ```bash
 pnpm install                # from the repo root

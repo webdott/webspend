@@ -19,7 +19,7 @@ with personal details removed. Never commit a real alert.
 
 ## Running it
 
-Requires Node 22.18 or newer (runs TypeScript directly) and pnpm. No database install: the
+Requires Node 22.23.4+, 24.22.1+ or 26.12.1+ (runs TypeScript directly; older builds have the Node2Shell Brotli bug) and pnpm. No database install: the
 server uses an embedded Postgres (PGlite) under `server/data/` unless `DATABASE_URL` points at a
 real one.
 
